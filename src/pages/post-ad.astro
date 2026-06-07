@@ -1,6 +1,79 @@
 ---
 export const prerender = false;
 import Layout from '../components/Layout.astro';
+const recaptchaSiteKey = import.meta.env.PUBLIC_RECAPTCHA_SITE_KEY;
+
+// Server-side: فحص رفع الصور والـ reCAPTCHA
+if (Astro.request.method === 'POST') {
+  const contentType = Astro.request.headers.get('content-type') || '';
+
+  // reCAPTCHA verification (JSON request)
+  if (contentType.includes('application/json')) {
+    try {
+      const body = await Astro.request.json();
+      const token = body.recaptchaToken;
+
+      if (!token) {
+        return new Response(JSON.stringify({ error: 'reCAPTCHA token missing' }), {
+          status: 400, headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
+      const verify = await fetch('https://www.google.com/recaptcha/api/siteverify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `secret=${import.meta.env.RECAPTCHA_SECRET_KEY}&response=${token}`
+      });
+
+      const result = await verify.json();
+      if (!result.success) {
+        return new Response(JSON.stringify({ error: 'reCAPTCHA failed' }), {
+          status: 400, headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
+      return new Response(JSON.stringify({ success: true }), {
+        status: 200, headers: { 'Content-Type': 'application/json' }
+      });
+    } catch (e) {
+      return new Response(JSON.stringify({ error: 'Server error' }), {
+        status: 500, headers: { 'Content-Type': 'application/json' }
+      });
+    }
+  }
+
+  // File upload validation (multipart request)
+  if (contentType.includes('multipart/form-data')) {
+    try {
+      const formData = await Astro.request.formData();
+      const files = formData.getAll('images') as File[];
+
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+      const maxSize = 2 * 1024 * 1024; // 2MB
+
+      for (const file of files) {
+        if (!allowedTypes.includes(file.type)) {
+          return new Response(JSON.stringify({ error: `Invalid file type: ${file.type}. Only JPG, PNG, WebP allowed.` }), {
+            status: 400, headers: { 'Content-Type': 'application/json' }
+          });
+        }
+        if (file.size > maxSize) {
+          return new Response(JSON.stringify({ error: `File too large: ${file.name}. Max 2MB per image.` }), {
+            status: 400, headers: { 'Content-Type': 'application/json' }
+          });
+        }
+      }
+
+      return new Response(JSON.stringify({ success: true }), {
+        status: 200, headers: { 'Content-Type': 'application/json' }
+      });
+    } catch (e) {
+      return new Response(JSON.stringify({ error: 'File validation error' }), {
+        status: 500, headers: { 'Content-Type': 'application/json' }
+      });
+    }
+  }
+}
 ---
 <Layout
   title="Post a Free Cat Ad in Australia | InfoDogCats"
@@ -30,7 +103,7 @@ import Layout from '../components/Layout.astro';
       <div class="grid grid-cols-2 gap-4">
         <div>
           <label class="block text-sm font-semibold text-charcoal mb-1.5">Breed <span class="text-terracotta">*</span></label>
-          <input type="text" name="breed" required placeholder="e.g. Ragdoll"
+          <input type="text" name="breed" required maxlength="50" placeholder="e.g. Ragdoll"
             class="w-full border border-sand rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta/50" />
         </div>
         <div>
@@ -49,7 +122,7 @@ import Layout from '../components/Layout.astro';
       <div class="grid grid-cols-2 gap-4">
         <div>
           <label class="block text-sm font-semibold text-charcoal mb-1.5">City <span class="text-terracotta">*</span></label>
-          <input type="text" name="city" required placeholder="e.g. Sydney"
+          <input type="text" name="city" required maxlength="50" placeholder="e.g. Sydney"
             class="w-full border border-sand rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta/50" />
         </div>
         <div>
@@ -78,19 +151,26 @@ import Layout from '../components/Layout.astro';
           <p class="text-xs text-gray-400 mt-1">JPG, PNG or WebP · Max 2MB each · Up to 5 photos</p>
         </div>
         <div id="preview" class="flex gap-2 mt-2 flex-wrap"></div>
+        <div id="file-error" class="hidden text-xs text-red-500 mt-1"></div>
       </div>
 
       <div class="grid grid-cols-2 gap-4">
         <div>
           <label class="block text-sm font-semibold text-charcoal mb-1.5">Phone</label>
-          <input type="tel" name="contact_phone" placeholder="04XX XXX XXX"
+          <input type="tel" name="contact_phone" placeholder="04XX XXX XXX" maxlength="20"
             class="w-full border border-sand rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta/50" />
         </div>
         <div>
           <label class="block text-sm font-semibold text-charcoal mb-1.5">Email</label>
-          <input type="email" name="contact_email"
+          <input type="email" name="contact_email" maxlength="100"
             class="w-full border border-sand rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta/50" />
         </div>
+      </div>
+
+      <!-- reCAPTCHA -->
+      <div>
+        <div class="g-recaptcha" data-sitekey={recaptchaSiteKey} data-theme="light"></div>
+        <p class="text-xs text-gray-400 mt-1">Protected by reCAPTCHA — <a href="https://policies.google.com/privacy" target="_blank" class="hover:underline">Privacy</a> · <a href="https://policies.google.com/terms" target="_blank" class="hover:underline">Terms</a></p>
       </div>
 
       <div id="form-error" class="hidden bg-red-50 text-red-600 text-sm rounded-xl px-4 py-3 border border-red-200"></div>
@@ -107,6 +187,8 @@ import Layout from '../components/Layout.astro';
   </div>
 </Layout>
 
+<script src="https://www.google.com/recaptcha/api.js" async defer></script>
+
 <script>
   import { createClient } from '@supabase/supabase-js';
 
@@ -115,33 +197,58 @@ import Layout from '../components/Layout.astro';
     (import.meta as any).env.PUBLIC_SUPABASE_ANON_KEY
   );
 
+  const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+  const MAX_SIZE = 2 * 1024 * 1024; // 2MB
+  const MAX_FILES = 5;
+
   async function init() {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
       document.getElementById('auth-required')?.classList.remove('hidden');
       const form = document.getElementById('post-form') as HTMLElement;
-      if (form) { form.style.opacity = '0.4'; form.style.pointerEvents = 'none'; }
+      if (form) { form.style.display = 'none'; }
       return;
     }
 
     const dropZone = document.getElementById('drop-zone')!;
     const imageInput = document.getElementById('image-input') as HTMLInputElement;
     const preview = document.getElementById('preview')!;
+    const fileError = document.getElementById('file-error')!;
 
     dropZone.addEventListener('click', () => imageInput.click());
-    imageInput.addEventListener('change', () => updatePreview());
 
-    function updatePreview() {
+    imageInput.addEventListener('change', () => {
+      fileError.classList.add('hidden');
       preview.innerHTML = '';
+
       if (!imageInput.files) return;
-      Array.from(imageInput.files).slice(0, 5).forEach(file => {
+
+      const files = Array.from(imageInput.files).slice(0, MAX_FILES);
+
+      for (const file of files) {
+        // Client-side file validation
+        if (!ALLOWED_TYPES.includes(file.type)) {
+          fileError.textContent = `Invalid file type: ${file.name}. Only JPG, PNG, WebP allowed.`;
+          fileError.classList.remove('hidden');
+          imageInput.value = '';
+          preview.innerHTML = '';
+          return;
+        }
+        if (file.size > MAX_SIZE) {
+          fileError.textContent = `File too large: ${file.name}. Max 2MB per image.`;
+          fileError.classList.remove('hidden');
+          imageInput.value = '';
+          preview.innerHTML = '';
+          return;
+        }
+
         const url = URL.createObjectURL(file);
         const img = document.createElement('img');
         img.src = url;
         img.className = 'w-20 h-16 object-cover rounded-lg border border-sand';
         preview.appendChild(img);
-      });
-    }
+      }
+    });
 
     document.getElementById('post-form')?.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -149,42 +256,105 @@ import Layout from '../components/Layout.astro';
       const errorEl = document.getElementById('form-error')!;
       const successEl = document.getElementById('form-success')!;
 
-      btn.disabled = true;
-      btn.textContent = 'Submitting...';
       errorEl.classList.add('hidden');
 
-      const form = e.target as HTMLFormElement;
-      const data = new FormData(form);
-      const title = data.get('title') as string;
-      const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + Date.now();
+      // 1. التحقق من reCAPTCHA
+      const captchaToken = (window as any).grecaptcha?.getResponse();
+      if (!captchaToken) {
+        errorEl.textContent = 'Please complete the reCAPTCHA verification.';
+        errorEl.classList.remove('hidden');
+        return;
+      }
 
-      const { data: cat, error: catErr } = await supabase.from('cats').insert({
-        user_id: session.user.id,
-        title,
-        slug,
-        breed: data.get('breed'),
-        price: parseFloat(data.get('price') as string),
-        age_months: data.get('age_months') ? parseInt(data.get('age_months') as string) : null,
-        description: data.get('description'),
-        city: data.get('city'),
-        state: data.get('state'),
-        contact_phone: data.get('contact_phone') || null,
-        contact_email: data.get('contact_email') || null,
-      }).select().single();
+      btn.disabled = true;
+      btn.textContent = 'Submitting...';
 
-      if (catErr) {
-        errorEl.textContent = 'Error: ' + catErr.message;
+      // 2. التحقق من reCAPTCHA على السيرفر
+      try {
+        const captchaRes = await fetch('/post-ad', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ recaptchaToken: captchaToken })
+        });
+
+        if (!captchaRes.ok) {
+          errorEl.textContent = 'reCAPTCHA verification failed. Please try again.';
+          errorEl.classList.remove('hidden');
+          btn.disabled = false;
+          btn.textContent = 'Submit Free Ad';
+          (window as any).grecaptcha?.reset();
+          return;
+        }
+      } catch (e) {
+        errorEl.textContent = 'Network error. Please try again.';
         errorEl.classList.remove('hidden');
         btn.disabled = false;
         btn.textContent = 'Submit Free Ad';
         return;
       }
 
+      // 3. التحقق من الصور على السيرفر
       const files = imageInput.files;
       if (files && files.length > 0) {
-        for (let i = 0; i < Math.min(files.length, 5); i++) {
+        const fileFormData = new FormData();
+        Array.from(files).slice(0, MAX_FILES).forEach(f => fileFormData.append('images', f));
+
+        try {
+          const fileRes = await fetch('/post-ad', {
+            method: 'POST',
+            body: fileFormData
+          });
+
+          if (!fileRes.ok) {
+            const fileResData = await fileRes.json();
+            errorEl.textContent = fileResData.error || 'File validation failed.';
+            errorEl.classList.remove('hidden');
+            btn.disabled = false;
+            btn.textContent = 'Submit Free Ad';
+            return;
+          }
+        } catch (e) {
+          errorEl.textContent = 'File upload error. Please try again.';
+          errorEl.classList.remove('hidden');
+          btn.disabled = false;
+          btn.textContent = 'Submit Free Ad';
+          return;
+        }
+      }
+
+      // 4. حفظ الإعلان في Supabase
+      const form = e.target as HTMLFormElement;
+      const data = new FormData(form);
+      const title = (data.get('title') as string).trim();
+      const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + Date.now();
+
+      const { data: cat, error: catErr } = await supabase.from('cats').insert({
+        user_id: session.user.id,
+        title,
+        slug,
+        breed: (data.get('breed') as string).trim(),
+        price: parseFloat(data.get('price') as string),
+        age_months: data.get('age_months') ? parseInt(data.get('age_months') as string) : null,
+        description: (data.get('description') as string).trim(),
+        city: (data.get('city') as string).trim(),
+        state: data.get('state'),
+        contact_phone: data.get('contact_phone') || null,
+        contact_email: data.get('contact_email') || null,
+      }).select().single();
+
+      if (catErr) {
+        errorEl.textContent = 'Error saving ad: ' + catErr.message;
+        errorEl.classList.remove('hidden');
+        btn.disabled = false;
+        btn.textContent = 'Submit Free Ad';
+        return;
+      }
+
+      // 5. رفع الصور إلى Supabase Storage
+      if (files && files.length > 0) {
+        for (let i = 0; i < Math.min(files.length, MAX_FILES); i++) {
           const file = files[i];
-          if (file.size > 2 * 1024 * 1024) continue;
+          if (!ALLOWED_TYPES.includes(file.type) || file.size > MAX_SIZE) continue;
           const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
           const path = `${cat.id}/${i}-${Date.now()}.${ext}`;
           const { error: upErr } = await supabase.storage.from('cat-images').upload(path, file, {
@@ -203,6 +373,7 @@ import Layout from '../components/Layout.astro';
       preview.innerHTML = '';
       btn.textContent = 'Submit Free Ad';
       btn.disabled = false;
+      (window as any).grecaptcha?.reset();
     });
   }
 

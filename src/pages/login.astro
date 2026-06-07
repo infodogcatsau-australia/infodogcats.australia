@@ -2,6 +2,47 @@
 export const prerender = false;
 import Layout from '../components/Layout.astro';
 const next = Astro.url.searchParams.get('next') || '/dashboard';
+const recaptchaSiteKey = import.meta.env.PUBLIC_RECAPTCHA_SITE_KEY;
+
+// Server-side reCAPTCHA verification
+if (Astro.request.method === 'POST') {
+  try {
+    const body = await Astro.request.json();
+    const token = body.recaptchaToken;
+
+    if (!token) {
+      return new Response(JSON.stringify({ error: 'reCAPTCHA token missing' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    const verify = await fetch('https://www.google.com/recaptcha/api/siteverify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: `secret=${import.meta.env.RECAPTCHA_SECRET_KEY}&response=${token}`
+    });
+
+    const result = await verify.json();
+
+    if (!result.success) {
+      return new Response(JSON.stringify({ error: 'reCAPTCHA verification failed' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    return new Response(JSON.stringify({ success: true }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  } catch (e) {
+    return new Response(JSON.stringify({ error: 'Server error' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+}
 ---
 <Layout title="Sign In | InfoDogCats" description="Sign in to your InfoDogCats account to manage your cat listings.">
   <div class="min-h-screen bg-gradient-to-br from-warm-white via-cream to-sand/20 flex items-center justify-center px-4 py-12">
@@ -44,7 +85,7 @@ const next = Astro.url.searchParams.get('next') || '/dashboard';
         </div>
 
         <!-- reCAPTCHA -->
-        <div class="g-recaptcha" data-sitekey="6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI" data-theme="light"></div>
+        <div class="g-recaptcha" data-sitekey={recaptchaSiteKey} data-theme="light"></div>
         <p class="text-xs text-gray-400">Protected by reCAPTCHA — <a href="https://policies.google.com/privacy" target="_blank" class="hover:underline">Privacy</a> · <a href="https://policies.google.com/terms" target="_blank" class="hover:underline">Terms</a></p>
 
         <div id="login-error" class="hidden bg-red-50 text-red-600 text-xs rounded-xl px-4 py-3 border border-red-200"></div>
@@ -93,9 +134,9 @@ const next = Astro.url.searchParams.get('next') || '/dashboard';
     const btn = document.getElementById('login-btn');
     const err = document.getElementById('login-error');
 
-    // reCAPTCHA check
-    const captcha = grecaptcha?.getResponse();
-    if (!captcha) {
+    // 1. التحقق من reCAPTCHA في المتصفح
+    const captchaToken = grecaptcha?.getResponse();
+    if (!captchaToken) {
       err.textContent = 'Please complete the reCAPTCHA verification.';
       err.classList.remove('hidden');
       return;
@@ -105,6 +146,31 @@ const next = Astro.url.searchParams.get('next') || '/dashboard';
     btn.textContent = 'Signing in...';
     err.classList.add('hidden');
 
+    // 2. التحقق من reCAPTCHA على السيرفر
+    try {
+      const captchaRes = await fetch('/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recaptchaToken: captchaToken })
+      });
+
+      if (!captchaRes.ok) {
+        err.textContent = 'reCAPTCHA verification failed. Please try again.';
+        err.classList.remove('hidden');
+        btn.disabled = false;
+        btn.textContent = 'Sign In →';
+        grecaptcha?.reset();
+        return;
+      }
+    } catch (e) {
+      err.textContent = 'Network error. Please try again.';
+      err.classList.remove('hidden');
+      btn.disabled = false;
+      btn.textContent = 'Sign In →';
+      return;
+    }
+
+    // 3. تسجيل الدخول عبر Supabase
     const { error } = await sb.auth.signInWithPassword({
       email: document.getElementById('email').value.trim(),
       password: pwInput.value
