@@ -1,0 +1,285 @@
+---
+export const prerender = false;
+import Layout from '../components/Layout.astro';
+import { supabase, getImageUrl } from '../lib/supabase';
+
+const { slug } = Astro.params;
+
+const { data: post } = await supabase
+  .from('posts')
+  .select('*')
+  .eq('slug', slug!)
+  .eq('is_published', true)
+  .single();
+
+if (!post) return Astro.redirect('/blog', 302);
+
+const schema = {
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": post.seo_title || post.title,
+  "description": post.seo_description || post.excerpt,
+  "datePublished": post.published_at,
+  "dateModified": post.updated_at || post.published_at,
+  "author": { "@type": "Person", "name": post.author || "InfoDogCats" },
+  "publisher": {
+    "@type": "Organization",
+    "name": "InfoDogCats Australia",
+    "url": "https://www.infodogcats.com"
+  }
+};
+
+const ogImage = post.featured_image_path
+  ? post.featured_image_path.startsWith('http')
+    ? post.featured_image_path
+    : getImageUrl(post.featured_image_path, 1200)
+  : undefined;
+
+const tagLabels: Record<string, string> = {
+  'maine-coon': 'Maine Coon',
+  'cat-breeds': 'Cat Breeds',
+  'cat-health': 'Cat Health',
+  'cat-food': 'Cat Food',
+  'indoor-cats': 'Indoor Cats',
+  'cats-for-adoption': 'Adoption',
+  'rescue': 'Rescue',
+  'feral-cats': 'Feral Cats',
+  'ragdoll': 'Ragdoll',
+  'burmese-cat': 'Burmese',
+  'sphynx-cat': 'Sphynx',
+  'kittens': 'Kittens',
+  'cats-for-sale': 'Cats for Sale',
+  'cats': 'Cats',
+  'pets': 'Pets',
+  'dog-food': 'Dog Food',
+};
+
+function tagLabel(tag: string): string {
+  return tagLabels[tag] || tag.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
+function getPostImgUrl(path: string): string {
+  if (!path) return '';
+  if (path.startsWith('http')) return path;
+  return getImageUrl(path, 900);
+}
+
+function addInternalLinks(content: string): string {
+  const links: [RegExp, string][] = [
+    [/\bMaine Coon\b/, '<a href="/cats-for-sale?breed=maine-coon" class="text-terracotta font-medium hover:underline">Maine Coon</a>'],
+    [/\bRagdoll\b/, '<a href="/cats-for-sale?breed=ragdoll" class="text-terracotta font-medium hover:underline">Ragdoll</a>'],
+    [/\bBurmese\b/, '<a href="/cats-for-sale?breed=burmese" class="text-terracotta font-medium hover:underline">Burmese</a>'],
+    [/\bSiamese\b/, '<a href="/cats-for-sale?breed=siamese" class="text-terracotta font-medium hover:underline">Siamese</a>'],
+    [/\bPersian\b/, '<a href="/cats-for-sale?breed=persian" class="text-terracotta font-medium hover:underline">Persian</a>'],
+    [/\bBritish Shorthair\b/, '<a href="/cats-for-sale?breed=british-shorthair" class="text-terracotta font-medium hover:underline">British Shorthair</a>'],
+    [/\bSphynx\b/, '<a href="/cats-for-sale?breed=sphynx" class="text-terracotta font-medium hover:underline">Sphynx</a>'],
+    [/\bcat vet\b/i, '<a href="/near-me/sydney/cat-vet" class="text-terracotta font-medium hover:underline">cat vet</a>'],
+    [/\bcat groomer\b/i, '<a href="/near-me/sydney/cat-groomer" class="text-terracotta font-medium hover:underline">cat groomer</a>'],
+    [/\bcat shelter\b/i, '<a href="/near-me/sydney/cat-shelter" class="text-terracotta font-medium hover:underline">cat shelter</a>'],
+    [/\bkittens for sale\b/i, '<a href="/cats-for-sale" class="text-terracotta font-medium hover:underline">kittens for sale</a>'],
+    [/\bcats for sale\b/i, '<a href="/cats-for-sale" class="text-terracotta font-medium hover:underline">cats for sale</a>'],
+  ];
+  let result = content;
+  links.forEach(([regex, replacement]) => {
+    result = result.replace(regex, replacement);
+  });
+  return result;
+}
+
+const linkedContent = addInternalLinks(post.content);
+const pageUrl = `https://www.infodogcats.com/${slug}`;
+---
+
+<Layout
+  title={post.seo_title || post.title}
+  description={post.seo_description || post.excerpt || post.title}
+  image={ogImage}
+  type="article"
+  schema={schema}
+  canonical={pageUrl}
+>
+  <!-- Article Header -->
+  <div class="bg-warm-white border-b border-sand/30">
+    <div class="max-w-3xl mx-auto px-4 sm:px-6 pt-8 pb-10">
+
+      <!-- Breadcrumb -->
+      <nav class="flex items-center gap-1.5 text-xs text-gray-400 mb-5">
+        <a href="/" class="hover:text-terracotta transition-colors">Home</a>
+        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+        </svg>
+        <a href="/blog" class="hover:text-terracotta transition-colors">Blog</a>
+        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+        </svg>
+        <span class="text-gray-500 truncate max-w-[200px]">{post.title.substring(0, 40)}...</span>
+      </nav>
+
+      <!-- Tags -->
+      {post.tags?.length > 0 && (
+        <div class="flex gap-2 flex-wrap mb-4">
+          {post.tags.map((tag: string) => (
+            <a href={`/blog/tag/${tag}`}
+               class="inline-flex items-center bg-terracotta/10 text-terracotta text-xs font-semibold px-3 py-1 rounded-full border border-terracotta/20 hover:bg-terracotta hover:text-white transition-colors">
+              {tagLabel(tag)}
+            </a>
+          ))}
+        </div>
+      )}
+
+      <!-- Title -->
+      <h1 class="font-display text-3xl md:text-4xl lg:text-5xl font-bold text-gray-950 leading-tight mb-5">
+        {post.title}
+      </h1>
+
+      <!-- Meta row -->
+      <div class="flex items-center gap-3 flex-wrap">
+        <div class="w-8 h-8 bg-terracotta rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
+          {(post.author || 'I').charAt(0).toUpperCase()}
+        </div>
+        <div class="flex items-center gap-2 text-sm text-gray-500">
+          <span class="font-medium text-gray-700">{post.author || 'InfoDogCats Team'}</span>
+          {post.published_at && (
+            <>
+              <span class="text-gray-300">·</span>
+              <time datetime={post.published_at}>
+                {new Date(post.published_at).toLocaleDateString('en-AU', {
+                  day: 'numeric', month: 'long', year: 'numeric'
+                })}
+              </time>
+            </>
+          )}
+        </div>
+        <div class="ml-auto flex gap-2">
+          <a href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(pageUrl)}`}
+             target="_blank" rel="noopener"
+             class="flex items-center gap-1.5 text-xs bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-colors font-medium">
+            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"/>
+            </svg>
+            Share
+          </a>
+          <a href={`https://pinterest.com/pin/create/button/?url=${encodeURIComponent(pageUrl)}&description=${encodeURIComponent(post.title)}`}
+             target="_blank" rel="noopener"
+             class="flex items-center gap-1.5 text-xs bg-red-50 text-red-600 px-3 py-1.5 rounded-lg hover:bg-red-100 transition-colors font-medium">
+            📌 Pin
+          </a>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Article Body -->
+  <article class="max-w-3xl mx-auto px-4 sm:px-6 py-10">
+
+    <!-- Featured Image -->
+    {post.featured_image_path && (
+      <div class="rounded-2xl overflow-hidden mb-10 shadow-md bg-warm-white">
+        <img
+          src={getPostImgUrl(post.featured_image_path)}
+          alt={post.title}
+          class="w-full h-auto object-cover"
+          width="900" height="506"
+        />
+      </div>
+    )}
+
+    <!-- Excerpt -->
+    {post.excerpt && (
+      <div class="bg-terracotta/5 border-l-4 border-terracotta rounded-r-xl px-5 py-4 mb-8">
+        <p class="text-gray-700 text-base leading-relaxed font-medium italic">{post.excerpt}</p>
+      </div>
+    )}
+
+    <!-- AdSense Top -->
+    <div class="my-6 text-center">
+      <ins class="adsbygoogle"
+           style="display:block; text-align:center;"
+           data-ad-layout="in-article"
+           data-ad-format="fluid"
+           data-ad-client="ca-pub-6105386470374334"
+           data-ad-slot="2366203061"></ins>
+      <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+    </div>
+
+    <!-- Content -->
+    <div class="
+      prose prose-base max-w-none
+      prose-headings:font-display
+      prose-headings:text-gray-950
+      prose-headings:font-bold
+      prose-h2:text-2xl prose-h2:mt-10 prose-h2:mb-4
+      prose-h3:text-xl prose-h3:mt-8 prose-h3:mb-3
+      prose-p:text-gray-600 prose-p:leading-relaxed prose-p:mb-4
+      prose-a:text-terracotta prose-a:font-medium prose-a:no-underline hover:prose-a:underline
+      prose-strong:text-gray-800 prose-strong:font-semibold
+      prose-ul:text-gray-600 prose-ol:text-gray-600
+      prose-li:mb-1.5
+      prose-img:rounded-2xl prose-img:shadow-md prose-img:mx-auto
+      prose-blockquote:border-terracotta prose-blockquote:bg-warm-white prose-blockquote:rounded-r-xl prose-blockquote:py-2
+      prose-code:text-terracotta prose-code:bg-warm-white prose-code:px-1.5 prose-code:rounded
+      prose-hr:border-sand/50
+    " set:html={linkedContent} />
+
+    <!-- AdSense Bottom -->
+    <div class="my-8">
+      <ins class="adsbygoogle"
+           style="display:block"
+           data-ad-format="fluid"
+           data-ad-layout-key="-6t+ed+2i-1n-4w"
+           data-ad-client="ca-pub-6105386470374334"
+           data-ad-slot="2202727245"></ins>
+      <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+    </div>
+
+    <!-- Bottom bar -->
+    <div class="mt-8 pt-8 border-t border-sand/30">
+      {post.tags?.length > 0 && (
+        <div class="flex gap-2 flex-wrap mb-6">
+          {post.tags.map((tag: string) => (
+            <a href={`/blog/tag/${tag}`}
+               class="text-xs bg-gray-100 text-gray-600 px-3 py-1.5 rounded-full font-medium hover:bg-terracotta hover:text-white transition-colors">
+              #{tagLabel(tag)}
+            </a>
+          ))}
+        </div>
+      )}
+      <div class="flex items-center justify-between flex-wrap gap-3">
+        <a href="/blog"
+           class="flex items-center gap-1.5 text-terracotta font-semibold hover:underline text-sm">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+          </svg>
+          Back to Blog
+        </a>
+        <div class="flex gap-2">
+          <a href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(pageUrl)}`}
+             target="_blank" rel="noopener"
+             class="flex items-center gap-1.5 text-xs bg-blue-50 text-blue-600 px-4 py-2 rounded-xl hover:bg-blue-100 transition-colors font-medium">
+            Share on Facebook
+          </a>
+          <a href={`https://pinterest.com/pin/create/button/?url=${encodeURIComponent(pageUrl)}&description=${encodeURIComponent(post.title)}`}
+             target="_blank" rel="noopener"
+             class="flex items-center gap-1.5 text-xs bg-red-50 text-red-600 px-4 py-2 rounded-xl hover:bg-red-100 transition-colors font-medium">
+            Save on Pinterest
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Related CTA -->
+    <div class="mt-10 bg-warm-white rounded-2xl p-6 border border-sand/30 flex flex-col sm:flex-row items-center gap-4">
+      <div class="text-4xl flex-shrink-0">🐱</div>
+      <div class="flex-1 text-center sm:text-left">
+        <p class="font-display font-bold text-gray-950 mb-1">Looking for a cat in Australia?</p>
+        <p class="text-gray-500 text-sm">Browse kittens and cats for sale near you — 100% free listings.</p>
+      </div>
+      <a href="/cats-for-sale"
+         class="flex-shrink-0 bg-terracotta text-white px-6 py-2.5 rounded-xl font-semibold text-sm hover:bg-terracotta-light transition-colors">
+        Browse Kittens →
+      </a>
+    </div>
+
+  </article>
+</Layout>

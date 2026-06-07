@@ -1,0 +1,236 @@
+---
+export const prerender = false;
+import Layout from '../../../components/Layout.astro';
+import { supabase } from '../../../lib/supabase';
+
+const { tag } = Astro.params;
+
+const tagLabels: Record<string, string> = {
+  'maine-coon': 'Maine Coon',
+  'cat-breeds': 'Cat Breeds',
+  'cat-health': 'Cat Health',
+  'cat-food': 'Cat Food',
+  'indoor-cats': 'Indoor Cat Life',
+  'cats-for-adoption': 'Adoption',
+  'rescue': 'Rescue',
+  'feral-cats': 'Feral Cats',
+  'ragdoll': 'Ragdoll',
+  'burmese-cat': 'Burmese',
+  'sphynx-cat': 'Sphynx',
+  'kittens': 'Kittens',
+  'cats-for-sale': 'Cats for Sale',
+  'cats': 'Cats',
+  'pets': 'Pets',
+  'dog-food': 'Dog Food',
+};
+
+const tagDescriptions: Record<string, string> = {
+  'maine-coon': 'Everything you need to know about Maine Coon cats in Australia — breed guides, care tips, feeding advice and where to find Maine Coon kittens for sale.',
+  'cat-breeds': 'Explore cat breed guides for Australian cat owners. From Ragdoll to Burmese, Siamese to Sphynx — find the perfect breed for your lifestyle.',
+  'cat-health': 'Expert cat health advice for Australian pet owners. Vaccinations, vet visits, common illnesses, dental care and more.',
+  'cat-food': 'The best cat food brands available in Australia. Wet food, dry food, raw feeding and homemade recipes for healthy cats.',
+  'indoor-cats': 'Tips and advice for keeping indoor cats happy and healthy in Australia. Enrichment, litter boxes, scratching posts and more.',
+  'feral-cats': 'Information about feral and stray cats in Australia — trap-neuter-return programs, wildlife impact and rescue organisations.',
+  'ragdoll': 'Ragdoll cat breed guides, care tips and where to find Ragdoll kittens for sale in Australia.',
+  'burmese-cat': 'Everything about Burmese cats — one of Australia\'s most popular breeds. Care, grooming, health and where to buy.',
+  'kittens': 'Kitten care guides for new cat owners in Australia — feeding, vaccinations, socialisation and kitten-proofing your home.',
+  'rescue': 'Cat rescue and adoption in Australia. How to adopt, what to expect and how to support your local rescue organisation.',
+};
+
+const tagLabel = tagLabels[tag || ''] || (tag || '').replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+const tagDesc = tagDescriptions[tag || ''] || `Browse all ${tagLabel} articles on InfoDogCats — expert cat care advice for Australian cat owners.`;
+
+const SUPABASE_URL = import.meta.env.PUBLIC_SUPABASE_URL;
+
+const { data: posts } = await supabase
+  .from('posts')
+  .select('id, slug, title, excerpt, featured_image_path, published_at, author, tags')
+  .eq('is_published', true)
+  .contains('tags', [tag!])
+  .order('published_at', { ascending: false });
+
+if (!posts || posts.length === 0) {
+  return Astro.redirect('/blog', 302);
+}
+
+function blogImgUrl(path: string): string {
+  if (!path) return '';
+  if (path.startsWith('http')) return path;
+  return `${SUPABASE_URL}/storage/v1/object/public/cat-images/${path}`;
+}
+
+const tagColors: Record<string, string> = {
+  'maine-coon': 'bg-amber-50 text-amber-700 border-amber-200',
+  'cat-breeds': 'bg-purple-50 text-purple-700 border-purple-200',
+  'cat-health': 'bg-green-50 text-green-700 border-green-200',
+  'cat-food': 'bg-orange-50 text-orange-700 border-orange-200',
+  'indoor-cats': 'bg-blue-50 text-blue-700 border-blue-200',
+  'feral-cats': 'bg-gray-50 text-gray-700 border-gray-200',
+  'ragdoll': 'bg-pink-50 text-pink-700 border-pink-200',
+  'burmese-cat': 'bg-yellow-50 text-yellow-700 border-yellow-200',
+};
+const tagColor = tagColors[tag || ''] || 'bg-terracotta/10 text-terracotta border-terracotta/20';
+
+const allTags = Object.keys(tagLabels);
+
+const pageTitle = `${tagLabel} Articles | Cat Care Blog | InfoDogCats Australia`;
+const pageDesc = tagDesc;
+---
+
+<Layout title={pageTitle} description={pageDesc}>
+
+  <!-- Header -->
+  <div class="bg-warm-white border-b border-sand/30">
+    <div class="max-w-5xl mx-auto px-4 sm:px-6 py-10">
+
+      <!-- Breadcrumb -->
+      <nav class="text-xs text-gray-400 mb-4 flex items-center gap-2 flex-wrap">
+        <a href="/" class="hover:text-terracotta">Home</a>
+        <span>/</span>
+        <a href="/blog" class="hover:text-terracotta">Blog</a>
+        <span>/</span>
+        <span class="text-gray-600 font-medium">{tagLabel}</span>
+      </nav>
+
+      <div class="flex items-start gap-4 mb-5">
+        <span class={`inline-flex items-center px-4 py-1.5 rounded-full text-sm font-bold border ${tagColor}`}>
+          {tagLabel}
+        </span>
+        <span class="text-gray-400 text-sm mt-1">{posts.length} articles</span>
+      </div>
+
+      <h1 class="font-display text-4xl md:text-5xl font-bold text-gray-950 mb-3">
+        {tagLabel} — Cat Care Articles
+      </h1>
+      <p class="text-gray-500 text-base max-w-2xl">{tagDesc}</p>
+
+      <!-- Tag filters -->
+      <div class="flex flex-wrap gap-2 mt-6">
+        <a href="/blog" class="px-3 py-1.5 rounded-full text-xs font-semibold bg-white border border-gray-200 text-gray-600 hover:border-terracotta hover:text-terracotta transition-all">
+          All Articles
+        </a>
+        {allTags.map(t => (
+          <a href={`/blog/tag/${t}`}
+             class={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+               t === tag
+                 ? 'bg-terracotta text-white border-terracotta'
+                 : `${tagColors[t] || 'bg-white border-gray-200 text-gray-600'} hover:opacity-80`
+             }`}>
+            {tagLabels[t]}
+          </a>
+        ))}
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Posts Grid -->
+  <div class="max-w-5xl mx-auto px-4 sm:px-6 py-10">
+
+    {/* Featured first post */}
+    <div class="mb-8">
+      <a href={`/${posts[0].slug}`}
+         class="group grid md:grid-cols-2 gap-0 bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-sand/20">
+        <div class="aspect-[16/10] md:aspect-auto overflow-hidden bg-warm-white">
+          {posts[0].featured_image_path ? (
+            <img
+              src={blogImgUrl(posts[0].featured_image_path)}
+              alt={posts[0].title}
+              class="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-700"
+              loading="eager" width="700" height="438"
+            />
+          ) : (
+            <div class="w-full h-full min-h-[250px] flex items-center justify-center bg-warm-white text-6xl">🐱</div>
+          )}
+        </div>
+        <div class="p-7 flex flex-col justify-center">
+          <span class={`inline-flex self-start px-3 py-1 rounded-full text-xs font-bold border mb-3 ${tagColor}`}>
+            {tagLabel}
+          </span>
+          <h2 class="font-body font-bold text-gray-950 text-xl md:text-2xl leading-snug mb-3 group-hover:text-terracotta transition-colors">
+            {posts[0].title}
+          </h2>
+          {posts[0].excerpt && (
+            <p class="text-gray-500 text-sm leading-relaxed mb-4 line-clamp-3">{posts[0].excerpt}</p>
+          )}
+          <div class="flex items-center gap-2 text-xs text-gray-400 mt-auto">
+            <div class="w-6 h-6 bg-terracotta rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+              {(posts[0].author || 'I').charAt(0).toUpperCase()}
+            </div>
+            <span class="font-medium text-gray-600">{posts[0].author}</span>
+            {posts[0].published_at && (
+              <>
+                <span>·</span>
+                <span>{new Date(posts[0].published_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+              </>
+            )}
+          </div>
+          <div class="mt-4">
+            <span class="inline-flex items-center gap-1 text-terracotta font-semibold text-sm">
+              Read article
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+              </svg>
+            </span>
+          </div>
+        </div>
+      </a>
+    </div>
+
+    {/* Rest of posts */}
+    {posts.length > 1 && (
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        {posts.slice(1).map((post: any) => (
+          <a href={`/${post.slug}`}
+             class="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1 border border-sand/20 flex flex-col">
+            <div class="overflow-hidden bg-warm-white" style="aspect-ratio: 16/9;">
+              {post.featured_image_path ? (
+                <img
+                  src={blogImgUrl(post.featured_image_path)}
+                  alt={post.title}
+                  class="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-500"
+                  loading="lazy" width="600" height="338"
+                />
+              ) : (
+                <div class="w-full h-full flex items-center justify-center text-5xl">🐱</div>
+              )}
+            </div>
+            <div class="p-5 flex flex-col flex-1">
+              <span class={`inline-flex self-start px-2.5 py-1 rounded-full text-xs font-bold border mb-2 ${tagColor}`}>
+                {tagLabel}
+              </span>
+              <h2 class="font-body font-semibold text-gray-900 text-sm leading-snug mb-2 line-clamp-2 group-hover:text-terracotta transition-colors flex-1">
+                {post.title}
+              </h2>
+              {post.excerpt && (
+                <p class="text-gray-400 text-xs leading-relaxed line-clamp-2 mb-3">{post.excerpt}</p>
+              )}
+              <div class="flex items-center gap-2 text-xs text-gray-400 mt-auto pt-3 border-t border-gray-50">
+                <div class="w-5 h-5 bg-terracotta/80 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                  {(post.author || 'I').charAt(0).toUpperCase()}
+                </div>
+                {post.published_at && (
+                  <span>{new Date(post.published_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                )}
+              </div>
+            </div>
+          </a>
+        ))}
+      </div>
+    )}
+
+    <!-- SEO Text -->
+    <div class="mt-14 bg-warm-white rounded-2xl p-7 border border-sand/30">
+      <h2 class="font-display text-xl font-bold text-gray-950 mb-3">
+        About Our {tagLabel} Articles
+      </h2>
+      <p class="text-gray-500 text-sm leading-relaxed mb-3">
+        InfoDogCats publishes expert {tagLabel.toLowerCase()} articles written specifically for Australian cat owners. Our guides cover everything from care and nutrition to breed-specific advice tailored to the Australian climate and lifestyle.
+      </p>
+      <p class="text-gray-500 text-sm leading-relaxed">
+        Looking for a {tagLabel.toLowerCase()} cat? Browse our <a href="/cats-for-sale" class="text-terracotta hover:underline font-medium">kittens for sale</a> listings or find a local <a href="/near-me/sydney/cat-vet" class="text-terracotta hover:underline font-medium">cat vet near you</a>.
+      </p>
+    </div>
+
+  </div>
+</Layout>

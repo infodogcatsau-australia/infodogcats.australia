@@ -1,0 +1,125 @@
+---
+export const prerender = false;
+import Layout from '../components/Layout.astro';
+const next = Astro.url.searchParams.get('next') || '/dashboard';
+---
+<Layout title="Sign In | InfoDogCats" description="Sign in to your InfoDogCats account to manage your cat listings.">
+  <div class="min-h-screen bg-gradient-to-br from-warm-white via-cream to-sand/20 flex items-center justify-center px-4 py-12">
+    <div class="w-full max-w-md">
+
+      <div class="text-center mb-8">
+        <a href="/" class="inline-flex items-center gap-2 mb-4">
+          <div class="w-12 h-12 bg-terracotta rounded-2xl flex items-center justify-center shadow-md">
+            <span class="text-2xl">🐱</span>
+          </div>
+          <span class="font-display text-2xl font-bold text-charcoal">InfoDog<span class="text-terracotta">Cats</span></span>
+        </a>
+        <h1 class="font-display text-3xl font-bold text-charcoal mt-2">Welcome back</h1>
+        <p class="text-gray-400 text-sm mt-1">Sign in to manage your listings</p>
+      </div>
+
+      <div class="bg-white rounded-2xl p-8 border border-sand/30 shadow-sm space-y-4">
+
+        <div>
+          <label class="block text-sm font-semibold text-charcoal mb-1.5">Email Address</label>
+          <input type="email" id="email" required autocomplete="email"
+            placeholder="your@email.com.au"
+            class="w-full border border-sand rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta/50 transition-all" />
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between mb-1.5">
+            <label class="block text-sm font-semibold text-charcoal">Password</label>
+            <a href="/forgot-password" class="text-xs text-terracotta hover:underline font-medium">Forgot password?</a>
+          </div>
+          <div class="relative">
+            <input type="password" id="password" required autocomplete="current-password"
+              placeholder="Your password"
+              class="w-full border border-sand rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta/50 transition-all pr-16" />
+            <button type="button" id="toggle-pw"
+              class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 hover:text-charcoal font-medium">
+              Show
+            </button>
+          </div>
+        </div>
+
+        <!-- reCAPTCHA -->
+        <div class="g-recaptcha" data-sitekey="6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI" data-theme="light"></div>
+        <p class="text-xs text-gray-400">Protected by reCAPTCHA — <a href="https://policies.google.com/privacy" target="_blank" class="hover:underline">Privacy</a> · <a href="https://policies.google.com/terms" target="_blank" class="hover:underline">Terms</a></p>
+
+        <div id="login-error" class="hidden bg-red-50 text-red-600 text-xs rounded-xl px-4 py-3 border border-red-200"></div>
+
+        <button id="login-btn"
+          class="w-full bg-terracotta text-white py-3.5 rounded-xl font-semibold text-sm hover:bg-terracotta-light transition-all shadow-sm hover:shadow-md disabled:opacity-60">
+          Sign In →
+        </button>
+
+        <div class="relative flex items-center gap-3">
+          <div class="flex-1 h-px bg-gray-100"></div>
+          <span class="text-xs text-gray-400">or</span>
+          <div class="flex-1 h-px bg-gray-100"></div>
+        </div>
+
+        <p class="text-center text-xs text-gray-400">
+          No account yet?
+          <a href="/register" class="text-terracotta font-semibold hover:underline">Create one free →</a>
+        </p>
+      </div>
+
+      <div class="flex justify-center gap-6 mt-6 text-xs text-gray-400">
+        <span class="flex items-center gap-1">🔒 Secure login</span>
+        <span class="flex items-center gap-1">🆓 Always free</span>
+      </div>
+
+    </div>
+  </div>
+</Layout>
+
+<script src="https://www.google.com/recaptcha/api.js" async defer></script>
+
+<script define:vars={{ next }}>
+  import { createClient } from '@supabase/supabase-js';
+  const sb = createClient(import.meta.env.PUBLIC_SUPABASE_URL, import.meta.env.PUBLIC_SUPABASE_ANON_KEY);
+
+  // Show/hide password
+  const pwInput = document.getElementById('password');
+  document.getElementById('toggle-pw')?.addEventListener('click', () => {
+    const isText = pwInput.type === 'text';
+    pwInput.type = isText ? 'password' : 'text';
+    document.getElementById('toggle-pw').textContent = isText ? 'Show' : 'Hide';
+  });
+
+  document.getElementById('login-btn')?.addEventListener('click', async () => {
+    const btn = document.getElementById('login-btn');
+    const err = document.getElementById('login-error');
+
+    // reCAPTCHA check
+    const captcha = grecaptcha?.getResponse();
+    if (!captcha) {
+      err.textContent = 'Please complete the reCAPTCHA verification.';
+      err.classList.remove('hidden');
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Signing in...';
+    err.classList.add('hidden');
+
+    const { error } = await sb.auth.signInWithPassword({
+      email: document.getElementById('email').value.trim(),
+      password: pwInput.value
+    });
+
+    if (error) {
+      err.textContent = error.message === 'Invalid login credentials'
+        ? 'Incorrect email or password. Please try again.'
+        : error.message;
+      err.classList.remove('hidden');
+      btn.disabled = false;
+      btn.textContent = 'Sign In →';
+      grecaptcha?.reset();
+    } else {
+      window.location.href = next;
+    }
+  });
+</script>

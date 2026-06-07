@@ -1,0 +1,258 @@
+---
+export const prerender = false;
+import Layout from '../../components/Layout.astro';
+import { supabase, getImageUrl } from '../../lib/supabase';
+import { buildCatSchema } from '../../lib/seo';
+
+const { slug } = Astro.params;
+
+const { data: cat } = await supabase
+  .from('cats')
+  .select('*, cat_images(storage_path, is_primary, sort_order)')
+  .eq('slug', slug!)
+  .eq('is_approved', true)
+  .neq('status', 'deleted')
+  .single();
+
+if (!cat) return Astro.redirect('/cats-for-sale', 302);
+
+if (cat.status === 'active') {
+  await supabase.rpc('increment_cat_views', { cat_slug: slug });
+}
+
+const SUPABASE_URL = import.meta.env.PUBLIC_SUPABASE_URL;
+
+// ✅ يدعم كل أنواع المسارات
+function getImgUrl(path: string, width = 900): string {
+  if (!path) return '/placeholder-cat.svg';
+  // URL كامل
+  if (path.startsWith('http')) return path;
+  // bucket cats
+  if (path.startsWith('cats/')) {
+    return `${SUPABASE_URL}/storage/v1/object/public/${path}`;
+  }
+  // demo/ و blog/ و manual/ → cat-images bucket بدون transformation
+  if (path.startsWith('demo/') || path.startsWith('blog/') || path.startsWith('manual/')) {
+    return `${SUPABASE_URL}/storage/v1/object/public/cat-images/${path}`;
+  }
+  // باقي المسارات مع resize
+  return getImageUrl(path, width);
+}
+
+const images = (cat.cat_images || []).sort((a: any, b: any) => a.sort_order - b.sort_order);
+const primaryImg = images.find((i: any) => i.is_primary) || images[0];
+const pageUrl = `https://www.infodogcats.com/cats-for-sale/${slug}`;
+const ogImage = primaryImg ? getImgUrl(primaryImg.storage_path, 1200) : undefined;
+
+const isSold = cat.status === 'sold';
+const isAdopted = cat.title?.toLowerCase().includes('adopt') || cat.description?.toLowerCase().includes('adopted');
+const isFree = cat.price === 0;
+const statusLabel = isSold ? (isAdopted ? 'Adopted ✓' : 'SOLD') : 'Available';
+const statusColor = isSold ? 'bg-gray-500' : 'bg-green-500';
+const priceLabel = isFree ? 'FREE' : `A$${cat.price.toLocaleString()}`;
+---
+
+<Layout
+  title={`${cat.title} — ${cat.breed} for Sale in ${cat.city}, ${cat.state}`}
+  description={`${cat.breed} for sale in ${cat.city}, ${cat.state}. Price: ${priceLabel}. ${(cat.description || '').substring(0, 130)}...`}
+  image={ogImage}
+  schema={buildCatSchema(cat, pageUrl)}
+>
+  <div class="max-w-5xl mx-auto px-4 sm:px-6 py-8">
+
+    <!-- Breadcrumb -->
+    <nav class="text-xs text-gray-400 mb-6 flex items-center gap-2 flex-wrap">
+      <a href="/" class="hover:text-terracotta transition-colors">Home</a>
+      <span class="text-gray-300">/</span>
+      <a href="/cats-for-sale" class="hover:text-terracotta transition-colors">Cats for Sale</a>
+      <span class="text-gray-300">/</span>
+      <span class="text-gray-500 truncate max-w-[200px]">{cat.title}</span>
+    </nav>
+
+    <!-- SOLD / Adopted Banner -->
+    {isSold && (
+      <div class={`mb-6 rounded-2xl px-5 py-4 flex items-center gap-3 ${isAdopted ? 'bg-blue-50 border border-blue-200' : 'bg-gray-50 border border-gray-200'}`}>
+        <span class="text-2xl">{isAdopted ? '🏠' : '🔴'}</span>
+        <div>
+          <p class={`font-bold text-sm ${isAdopted ? 'text-blue-700' : 'text-gray-700'}`}>
+            {isAdopted ? 'This cat has been adopted!' : 'This listing has been sold!'}
+          </p>
+          <p class="text-xs text-gray-400 mt-0.5">
+            {isAdopted ? 'Great news — this kitty found a loving home.' : 'This cat has found a new home. Browse other listings below.'}
+          </p>
+        </div>
+        <a href="/cats-for-sale"
+           class="ml-auto bg-terracotta text-white text-xs font-semibold px-4 py-2 rounded-full hover:bg-terracotta-light transition-colors whitespace-nowrap">
+          Browse More →
+        </a>
+      </div>
+    )}
+
+    <div class="grid md:grid-cols-2 gap-8">
+
+      <!-- IMAGE SECTION -->
+      <div>
+        <div class="relative rounded-2xl overflow-hidden bg-warm-white shadow-md" style="aspect-ratio: 4/3;">
+          {primaryImg ? (
+            <img
+              src={getImgUrl(primaryImg.storage_path, 900)}
+              alt={`${cat.breed} for sale in ${cat.city}, ${cat.state}`}
+              class="w-full h-full object-cover"
+              width="900" height="675"
+              onerror="this.onerror=null; this.src='/placeholder-cat.svg';"
+            />
+          ) : (
+            <div class="w-full h-full flex items-center justify-center text-8xl">🐱</div>
+          )}
+          <div class={`absolute top-3 left-3 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-md ${statusColor}`}>
+            {statusLabel}
+          </div>
+          {isSold && (
+            <div class="absolute inset-0 bg-black/20 flex items-center justify-center">
+              <div class="bg-white/90 backdrop-blur-sm rounded-2xl px-6 py-3 text-center shadow-lg">
+                <p class="font-bold text-gray-800 text-lg">{isAdopted ? '🏠 Adopted' : '✓ Sold'}</p>
+                <p class="text-gray-500 text-xs mt-1">No longer available</p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {images.length > 1 && (
+          <div class="flex gap-2 mt-3 overflow-x-auto pb-1">
+            {images.map((img: any) => (
+              <img
+                src={getImgUrl(img.storage_path, 200)}
+                alt={cat.breed}
+                class="w-20 h-16 object-cover rounded-xl flex-shrink-0 cursor-pointer hover:opacity-80 border-2 border-transparent hover:border-terracotta transition-all"
+                width="80" height="64"
+                onerror="this.onerror=null; this.src='/placeholder-cat.svg';"
+              />
+            ))}
+          </div>
+        )}
+
+        <div class="mt-4 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex gap-2">
+          <span class="text-amber-500 text-sm">⚠️</span>
+          <p class="text-xs text-amber-700 leading-relaxed">
+            <strong>Stay safe:</strong> Always meet in a public place. Never send money in advance. Inspect the kitten before paying.
+          </p>
+        </div>
+      </div>
+
+      <!-- DETAILS SECTION -->
+      <div>
+        <div class="flex items-center gap-2 mb-2">
+          <span class="bg-terracotta/10 text-terracotta text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-full">
+            {cat.breed}
+          </span>
+          {cat.age_months && (
+            <span class="bg-warm-white text-gray-500 text-xs font-medium px-3 py-1 rounded-full">
+              🎂 {cat.age_months < 12 ? `${cat.age_months} months` : `${Math.floor(cat.age_months/12)} year${Math.floor(cat.age_months/12) > 1 ? 's' : ''}`}
+            </span>
+          )}
+        </div>
+
+        <h1 class="font-display text-2xl md:text-3xl font-bold text-charcoal mb-4 leading-tight">
+          {cat.title}
+        </h1>
+
+        <div class="flex items-center justify-between mb-5 pb-5 border-b border-sand/30">
+          <div>
+            <p class="text-xs text-gray-400 mb-0.5">Price</p>
+            <p class={`text-3xl font-bold ${isFree ? 'text-green-600' : isSold ? 'text-gray-400' : 'text-forest'}`}>
+              {priceLabel}
+            </p>
+          </div>
+          <div class="text-right">
+            <p class="text-xs text-gray-400 mb-0.5">Location</p>
+            <p class="font-semibold text-charcoal flex items-center gap-1 justify-end">
+              <svg class="w-3.5 h-3.5 text-terracotta" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/>
+              </svg>
+              {cat.city}, {cat.state}
+            </p>
+          </div>
+        </div>
+
+        <div class="mb-6">
+          <h2 class="text-sm font-semibold text-charcoal mb-2">About this cat</h2>
+          <p class="text-gray-600 text-sm leading-relaxed whitespace-pre-line">{cat.description}</p>
+        </div>
+
+        <div class="flex flex-wrap gap-2 mb-6">
+          <span class="bg-green-50 text-green-700 text-xs font-medium px-3 py-1.5 rounded-full border border-green-200">✓ Vaccinated</span>
+          <span class="bg-green-50 text-green-700 text-xs font-medium px-3 py-1.5 rounded-full border border-green-200">✓ Microchipped</span>
+          <span class="bg-green-50 text-green-700 text-xs font-medium px-3 py-1.5 rounded-full border border-green-200">✓ Vet Checked</span>
+          <span class="bg-blue-50 text-blue-700 text-xs font-medium px-3 py-1.5 rounded-full border border-blue-200">💰 Face-to-face payment</span>
+        </div>
+
+        {!isSold ? (
+          <div class="bg-warm-white rounded-2xl p-5 space-y-3 border border-sand/30">
+            <h2 class="font-semibold text-charcoal text-sm">Contact Owner</h2>
+            {cat.contact_phone && (
+              <a href={`tel:${cat.contact_phone}`}
+                 class="flex items-center justify-center gap-2 bg-terracotta text-white px-5 py-3.5 rounded-xl font-semibold text-sm hover:bg-terracotta-light transition-colors w-full shadow-sm">
+                📞 Call {cat.contact_phone}
+              </a>
+            )}
+            {cat.contact_email && (
+              <a href={`mailto:${cat.contact_email}?subject=Enquiry about: ${encodeURIComponent(cat.title)}`}
+                 class="flex items-center justify-center gap-2 bg-white border border-sand text-charcoal px-5 py-3.5 rounded-xl font-semibold text-sm hover:border-terracotta hover:text-terracotta transition-all w-full">
+                ✉️ Send Email
+              </a>
+            )}
+            <p class="text-xs text-gray-400 text-center pt-1">
+              💡 Payment face-to-face only. Never send money online.
+            </p>
+          </div>
+        ) : (
+          <div class="bg-gray-50 rounded-2xl p-5 border border-gray-200 text-center">
+            <p class="text-gray-500 font-medium text-sm mb-3">
+              {isAdopted ? 'This cat has been adopted 🏠' : 'This listing is no longer available'}
+            </p>
+            <a href="/cats-for-sale"
+               class="inline-block bg-terracotta text-white px-6 py-3 rounded-xl font-semibold text-sm hover:bg-terracotta-light transition-colors">
+              Browse Available Cats →
+            </a>
+          </div>
+        )}
+
+        <div class="mt-4 flex gap-2">
+          <a href={`https://www.facebook.com/sharer/sharer.php?u=${pageUrl}`}
+             target="_blank" rel="noopener"
+             class="flex-1 text-center text-xs bg-blue-50 text-blue-600 px-3 py-2.5 rounded-xl hover:bg-blue-100 transition-colors font-medium">
+            📘 Share on Facebook
+          </a>
+          <a href={`https://pinterest.com/pin/create/button/?url=${pageUrl}&description=${encodeURIComponent(cat.title)}`}
+             target="_blank" rel="noopener"
+             class="flex-1 text-center text-xs bg-red-50 text-red-600 px-3 py-2.5 rounded-xl hover:bg-red-100 transition-colors font-medium">
+            📌 Pin on Pinterest
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- AdSense -->
+    <div class="mt-10">
+      <ins class="adsbygoogle" style="display:block"
+           data-ad-client="ca-pub-6105386470374334"
+           data-ad-slot="2366203061"
+           data-ad-format="auto"
+           data-full-width-responsive="true"></ins>
+      <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+    </div>
+
+    <!-- Related -->
+    <div class="mt-8 pt-6 border-t border-sand/30 flex flex-wrap gap-4">
+      <a href={`/cats-for-sale?breed=${encodeURIComponent(cat.breed)}`}
+         class="text-terracotta font-semibold hover:underline text-sm">
+        → More {cat.breed} cats for sale
+      </a>
+      <a href={`/cats-for-sale?state=${cat.state}`}
+         class="text-terracotta font-semibold hover:underline text-sm">
+        → Cats for sale in {cat.state}
+      </a>
+    </div>
+
+  </div>
+</Layout>

@@ -1,0 +1,65 @@
+---
+interface Props {
+  title: string;
+  description: string;
+  canonical?: string;
+  image?: string;
+  type?: string;
+  schema?: object | object[];
+}
+const {
+  title,
+  description,
+  canonical,
+  image = 'https://www.infodogcats.com/og-image.jpg',
+  type = 'website',
+  schema
+} = Astro.props;
+
+const fullTitle = title.includes('InfoDogCats') ? title : `${title} | InfoDogCats Australia`;
+const canonicalUrl = (canonical ?? Astro.url.href).replace(/\/$/, '');
+const schemas = schema ? (Array.isArray(schema) ? schema : [schema]) : [];
+---
+<title>{fullTitle}</title>
+<meta name="description" content={description} />
+<link rel="canonical" href={canonicalUrl} />
+<meta name="robots" content="index, follow, max-image-preview:large" />
+
+<!-- Open Graph -->
+<meta property="og:type" content={type} />
+<meta property="og:title" content={fullTitle} />
+<meta property="og:description" content={description} />
+<meta property="og:url" content={canonicalUrl} />
+<meta property="og:image" content={image} />
+<meta property="og:site_name" content="InfoDogCats Australia" />
+<meta property="og:locale" content="en_AU" />
+
+<!-- Twitter -->
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content={fullTitle} />
+<meta name="twitter:description" content={description} />
+<meta name="twitter:image" content={image} />
+
+<!-- Geo -->
+<meta name="geo.region" content="AU" />
+<meta name="language" content="en-AU" />
+
+<!-- Google Search Console -->
+<meta name="google-site-verification" content="Son8r2evHhGATk4tHGVCmfkaKILKdvyJgcWMXzLt3Do" />
+
+<!-- Bing Webmaster -->
+<meta name="msvalidate.01" content="C4EA4CD9597A5B272C8CA367212DD5E5" />
+
+<!-- Pinterest -->
+<meta name="p:domain_verify" content="2c1df61bd81ab2e9ae2cfcf4f6e4839c" />
+
+<!-- Yandex -->
+<meta name="yandex-verification" content="cc70096ac3dc6738" />
+
+<!-- Norton Safe Web -->
+<meta name="norton-safeweb-site-verification" content="2M9EJT5BT3NRNIW9GJTM8FG45VF5CM7FSQQ3R9HFHRIQDD6BUU-8E1OD066JUOQ0JSTG47O7LF84NUMUXC97Q94DBOBC0D6HUDCGFSI7EOXRX90FVBOKDOEA25HVRMNY" />
+
+<!-- JSON-LD Schema -->
+{schemas.map(s => (
+  <script type="application/ld+json" set:html={JSON.stringify(s)} />
+))}

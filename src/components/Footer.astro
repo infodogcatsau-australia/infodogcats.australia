@@ -1,0 +1,150 @@
+---
+const year = new Date().getFullYear();
+---
+<footer class="bg-[#1C1C1E] text-gray-100 mt-16">
+
+  <!-- Main footer content -->
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
+    <div class="grid grid-cols-1 md:grid-cols-12 gap-10">
+
+      <!-- Brand column -->
+      <div class="md:col-span-5">
+        <a href="/" class="flex items-center gap-3 mb-5 group">
+          <div class="w-10 h-10 bg-terracotta rounded-xl flex items-center justify-center shadow-sm">
+            <span class="text-xl">🐱</span>
+          </div>
+          <span class="font-display text-xl font-bold text-white">
+            InfoDog<span class="text-terracotta">Cats</span>
+          </span>
+        </a>
+
+        <p class="text-sm leading-relaxed text-gray-300 max-w-sm mb-6">
+          Australia's free platform for finding cats and kittens for sale. Connecting responsible breeders and owners with cat lovers across all states and territories.
+        </p>
+
+        <!-- States coverage -->
+        <div class="flex flex-wrap gap-1.5 mb-6">
+          {['NSW', 'VIC', 'QLD', 'WA', 'SA', 'TAS', 'ACT', 'NT'].map(state => (
+            <span class="text-xs bg-white/10 text-gray-200 px-2.5 py-1 rounded-md border border-white/10">
+              {state}
+            </span>
+          ))}
+        </div>
+
+        <!-- Trust badges -->
+        <div class="flex flex-wrap gap-3 text-xs text-gray-300">
+          <span class="flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+            </svg>
+            Free to list
+          </span>
+          <span class="flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+            </svg>
+            No hidden fees
+          </span>
+          <span class="flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+            </svg>
+            Direct from owners
+          </span>
+        </div>
+      </div>
+
+      <!-- Spacer -->
+      <div class="hidden md:block md:col-span-1"></div>
+
+      <!-- Browse column -->
+      <div class="md:col-span-2">
+        <h3 class="text-white font-semibold mb-4 text-xs uppercase tracking-widest">Browse</h3>
+        <ul class="space-y-3 text-sm">
+          {[
+            { href: '/cats-for-sale', label: 'Cats for Sale' },
+            { href: '/near-me/sydney', label: 'Near Me' },
+            { href: '/blog', label: 'Cat Care Blog' },
+            { href: '/post-ad', label: 'Post Free Ad' },
+          ].map(link => (
+            <li>
+              <a href={link.href}
+                 class="hover:text-white hover:translate-x-1 transition-all inline-flex items-center gap-1.5 group text-gray-300">
+                <svg class="w-3 h-3 text-terracotta opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/>
+                </svg>
+                {link.label}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <!-- Breeds column -->
+      <div class="md:col-span-2">
+        <h3 class="text-white font-semibold mb-4 text-xs uppercase tracking-widest">Breeds</h3>
+        <ul class="space-y-3 text-sm">
+          {['Maine Coon', 'Ragdoll', 'Siamese', 'Burmese', 'Persian', 'British Shorthair'].map(breed => (
+            <li>
+              <a href={`/cats-for-sale?breed=${breed.toLowerCase().replace(' ', '-')}`}
+                 class="text-gray-300 hover:text-white transition-colors">
+                {breed}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <!-- Company column -->
+      <div class="md:col-span-2">
+        <h3 class="text-white font-semibold mb-4 text-xs uppercase tracking-widest">Company</h3>
+        <ul class="space-y-3 text-sm">
+          {[
+            { href: '/about', label: 'About Us' },
+            { href: '/contact', label: 'Contact' },
+            { href: '/privacy-policy', label: 'Privacy Policy' },
+            { href: '/terms', label: 'Terms of Service' },
+          ].map(link => (
+            <li>
+              <a href={link.href} class="text-gray-300 hover:text-white transition-colors">
+                {link.label}
+              </a>
+            </li>
+          ))}
+          <li>
+            <a href="/post-ad"
+               class="inline-flex items-center gap-1.5 bg-terracotta text-white text-xs font-semibold px-4 py-2 rounded-lg hover:bg-terracotta-light transition-colors mt-2">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/>
+              </svg>
+              Post Free Ad
+            </a>
+          </li>
+        </ul>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Bottom bar -->
+  <div class="border-t border-white/10">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex flex-col sm:flex-row items-center justify-between gap-3">
+      <p class="text-xs text-gray-300">
+        © {year} InfoDogCats.com — All rights reserved. Built for Australian cat lovers.
+      </p>
+      <div class="flex items-center gap-4 text-xs text-gray-300">
+        <a href="/privacy-policy" class="hover:text-white transition-colors">Privacy</a>
+        <span class="text-gray-600">·</span>
+        <a href="/terms" class="hover:text-white transition-colors">Terms</a>
+        <span class="text-gray-600">·</span>
+        <a href="/contact" class="hover:text-white transition-colors">Contact</a>
+        <span class="text-gray-600">·</span>
+        <span class="flex items-center gap-1.5">
+          <span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
+          All systems normal
+        </span>
+      </div>
+    </div>
+  </div>
+
+</footer>

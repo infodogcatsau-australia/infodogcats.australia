@@ -1,0 +1,25 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+@theme {
+  --color-cream: #FDFAF5;
+  --color-warm-white: #F8F4ED;
+  --color-terracotta: #C85A3C;
+  --color-terracotta-light: #E8826A;
+  --color-forest: #2D5016;
+  --color-sand: #D4B896;
+  --color-charcoal: #2C2C2C;
+  --font-display: 'Playfair Display', Georgia, serif;
+  --font-body: 'DM Sans', system-ui, sans-serif;
+}
+
+@layer base {
+  body {
+    background-color: var(--color-cream);
+    font-family: var(--font-body);
+    color: var(--color-charcoal);
+  }
+  h1, h2, h3, h4 {
+    font-family: var(--font-display);
+  }
+}

@@ -1,0 +1,116 @@
+---
+export const prerender = true;
+import Layout from '../components/Layout.astro';
+---
+<Layout
+  title="About InfoDogCats | Australia's Free Cat Marketplace"
+  description="InfoDogCats is Australia's dedicated free platform for buying, selling and rehoming cats. Learn about our mission, values and commitment to responsible pet ownership."
+>
+  <!-- Hero -->
+  <div class="bg-warm-white border-b border-sand/30">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 py-14">
+      <p class="text-terracotta text-xs font-bold uppercase tracking-widest mb-3">Our Story</p>
+      <h1 class="font-display text-4xl md:text-5xl font-bold text-gray-950 mb-4 leading-tight">
+        Australia's Home for<br/>Cat Lovers
+      </h1>
+      <p class="text-gray-500 text-lg max-w-2xl leading-relaxed">
+        InfoDogCats was built by cat lovers, for cat lovers. Our mission is simple: connect responsible breeders and owners with families across Australia — completely free of charge, always.
+      </p>
+    </div>
+  </div>
+
+  <!-- Main content -->
+  <div class="max-w-4xl mx-auto px-4 sm:px-6 py-12">
+
+    <!-- Mission -->
+    <div class="grid md:grid-cols-3 gap-5 mb-14">
+      {[
+        {
+          icon: '🐱',
+          title: 'Our Mission',
+          text: 'To make finding or rehoming a cat in Australia simple, safe and completely free. No listing fees, no commissions, no hidden costs — ever.'
+        },
+        {
+          icon: '🤝',
+          title: 'Direct Connections',
+          text: 'We connect buyers and sellers directly. No middlemen, no agents. Every listing goes straight from the owner to you.'
+        },
+        {
+          icon: '🇦🇺',
+          title: 'Australia-Wide',
+          text: 'We serve all eight states and territories — NSW, VIC, QLD, WA, SA, TAS, ACT and NT. From Sydney to Darwin and everywhere in between.'
+        },
+      ].map(item => (
+        <div class="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+          <div class="text-3xl mb-4">{item.icon}</div>
+          <h3 class="font-display font-bold text-gray-950 text-lg mb-2">{item.title}</h3>
+          <p class="text-gray-500 text-sm leading-relaxed">{item.text}</p>
+        </div>
+      ))}
+    </div>
+
+    <!-- About section -->
+    <div class="prose prose-base max-w-none prose-headings:font-display prose-headings:text-gray-950 prose-a:text-terracotta prose-p:text-gray-600 prose-strong:text-gray-800 mb-14">
+
+      <h2>Who We Are</h2>
+      <p>
+        InfoDogCats is an Australian-owned and operated platform dedicated entirely to cats. We believe every cat deserves a loving, permanent home — and every family searching for a feline companion deserves a safe, trustworthy place to find one.
+      </p>
+      <p>
+        Unlike large classified platforms where cats are listed alongside furniture and cars, InfoDogCats is built specifically for the Australian cat community. We understand the unique needs of Australian cat owners, breeders and rescue groups — and we've designed every feature of our platform with that in mind.
+      </p>
+
+      <h2>What We Offer</h2>
+      <ul>
+        <li><strong>Free Cat Listings:</strong> Post a listing in minutes with photos, descriptions, contact details and pricing. No fees, no subscriptions.</li>
+        <li><strong>Browse by Breed:</strong> Whether you're looking for a Maine Coon, Ragdoll, Siamese, Burmese or a loving domestic moggie, you'll find them here.</li>
+        <li><strong>Search Near Me:</strong> Find cats and kittens available in your city — Sydney, Melbourne, Brisbane, Perth, Adelaide and beyond.</li>
+        <li><strong>Cat Care Blog:</strong> Over 300 articles covering cat health, nutrition, breed guides, and responsible ownership written for the Australian climate and lifestyle.</li>
+        <li><strong>Local Vet Finder:</strong> Our Near Me feature helps you locate trusted veterinarians and groomers in your area.</li>
+      </ul>
+
+      <h2>Our Commitment to Responsible Pet Ownership</h2>
+      <p>
+        At InfoDogCats, we take responsible pet ownership seriously. We strongly encourage all sellers to ensure their cats are:
+      </p>
+      <ul>
+        <li>Vaccinated and up to date with health checks</li>
+        <li>Microchipped and registered in accordance with Australian state laws</li>
+        <li>Desexed where appropriate before rehoming</li>
+        <li>Socialised and comfortable around people</li>
+      </ul>
+      <p>
+        We also encourage all buyers to meet the cat in person before committing, ask for veterinary documentation, and never send money in advance of viewing the animal. If you're adopting from a rescue or shelter, we commend you — please ask us about listing your rescue cats for free.
+      </p>
+
+      <h2>Australian Cat Laws & Compliance</h2>
+      <p>
+        Cat ownership laws vary across Australian states and territories. We encourage all users to familiarise themselves with local regulations, including leash laws, curfew requirements, and registration obligations in their state. Our blog covers Australian cat legislation in detail, including updates for 2025 and 2026.
+      </p>
+
+      <h2>Advertising & Partnerships</h2>
+      <p>
+        InfoDogCats is supported by Google AdSense advertising and select affiliate partnerships with trusted Australian pet product retailers. We only partner with brands we believe genuinely benefit the Australian cat community. Advertising revenue allows us to keep all listings and services 100% free for our users.
+      </p>
+
+    </div>
+
+    <!-- CTA -->
+    <div class="bg-terracotta/5 border border-terracotta/20 rounded-2xl p-8 flex flex-col sm:flex-row items-center gap-5 text-center sm:text-left">
+      <div class="text-5xl flex-shrink-0">🐱</div>
+      <div class="flex-1">
+        <h2 class="font-display text-xl font-bold text-gray-950 mb-1">Ready to find your perfect cat?</h2>
+        <p class="text-gray-500 text-sm">Browse hundreds of cats and kittens for sale across Australia — or post your own free listing today.</p>
+      </div>
+      <div class="flex gap-3 flex-shrink-0">
+        <a href="/cats-for-sale" class="bg-terracotta text-white px-5 py-2.5 rounded-xl font-semibold text-sm hover:bg-terracotta-light transition-colors">
+          Browse Cats
+        </a>
+        <a href="/post-ad" class="border border-terracotta text-terracotta px-5 py-2.5 rounded-xl font-semibold text-sm hover:bg-terracotta/5 transition-colors">
+          Post Free Ad
+        </a>
+      </div>
+    </div>
+
+  </div>
+</Layout>

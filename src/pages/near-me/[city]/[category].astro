@@ -1,0 +1,291 @@
+---
+export const prerender = false;
+import Layout from '../../../components/Layout.astro';
+import { supabase } from '../../../lib/supabase';
+
+const { city, category } = Astro.params;
+const cityName = city ? city.charAt(0).toUpperCase() + city.slice(1).replace(/-/g, ' ') : 'Sydney';
+
+const categoryMap: Record<string, { label: string; plural: string; emoji: string; color: string; description: string }> = {
+  'cat-vet': {
+    label: 'Cat Vet', plural: 'Cat Vets', emoji: '🏥',
+    color: 'text-red-600 bg-red-50 border-red-200',
+    description: `Find trusted cat veterinarians near you in ${cityName}. Our directory lists vet clinics specialising in feline care across ${cityName}, Australia.`
+  },
+  'cat-groomer': {
+    label: 'Cat Groomer', plural: 'Cat Groomers', emoji: '✂️',
+    color: 'text-purple-600 bg-purple-50 border-purple-200',
+    description: `Find professional cat groomers near you in ${cityName}. Book a grooming session for your Persian, Maine Coon or any breed.`
+  },
+  'cat-shelter': {
+    label: 'Cat Shelter', plural: 'Cat Shelters & Rescues', emoji: '🏠',
+    color: 'text-blue-600 bg-blue-50 border-blue-200',
+    description: `Adopt a cat near you in ${cityName}. Browse local cat shelters, rescue organisations and RSPCA branches in ${cityName}, Australia.`
+  },
+  'pet-shop': {
+    label: 'Pet Shop', plural: 'Pet Shops', emoji: '🛒',
+    color: 'text-orange-600 bg-orange-50 border-orange-200',
+    description: `Find pet shops near you in ${cityName} stocking cat food, toys, litter and accessories for your feline companion.`
+  },
+};
+
+const dbCategoryMap: Record<string, string> = {
+  'cat-vet': 'vet', 'cat-groomer': 'groomer', 'cat-shelter': 'shelter', 'pet-shop': 'pet_shop',
+};
+
+const catInfo = categoryMap[category || ''] || categoryMap['cat-vet'];
+const dbCategory = dbCategoryMap[category || ''] || 'vet';
+const SUPABASE_URL = import.meta.env.PUBLIC_SUPABASE_URL;
+
+const [{ data: services }, { data: cats }] = await Promise.all([
+  supabase.from('local_services').select('*').ilike('city', `%${cityName}%`).eq('category', dbCategory).eq('is_active', true).order('rating', { ascending: false }).limit(50),
+  supabase.from('cats').select('id, slug, title, breed, price, city, state, cat_images(storage_path, is_primary)').eq('status', 'active').eq('is_approved', true).ilike('city', `%${cityName}%`).limit(4),
+]);
+
+const auCities = ['Sydney','Melbourne','Brisbane','Perth','Adelaide','Gold Coast','Canberra','Hobart','Darwin'];
+const categories = ['cat-vet','cat-groomer','cat-shelter','pet-shop'];
+const pageTitle = `${catInfo.plural} Near Me in ${cityName} | InfoDogCats`;
+const pageDesc = `${catInfo.description} Browse ${services?.length || 0}+ ${catInfo.plural.toLowerCase()} in ${cityName}, Australia. Updated 2026.`;
+
+const schemas = (services || []).slice(0, 5).map((s: any) => ({
+  "@context": "https://schema.org",
+  "@type": dbCategory === 'vet' ? "VeterinaryCare" : "LocalBusiness",
+  "name": s.name,
+  "address": { "@type": "PostalAddress", "streetAddress": s.address, "addressLocality": s.city, "addressRegion": s.state, "addressCountry": "AU" },
+  "telephone": s.phone,
+  "url": s.website,
+  "aggregateRating": s.rating ? { "@type": "AggregateRating", "ratingValue": s.rating, "bestRating": "5" } : undefined
+}));
+
+const faqAnswers = {
+  q1: `InfoDogCats lists ${services?.length || 0}+ ${catInfo.plural.toLowerCase()} in ${cityName}. Browse our directory above to find contact details, ratings and websites. You can call directly by clicking the phone number.`,
+  q2: dbCategory === 'vet'
+    ? `Look for experienced feline vets, strong Google reviews and proximity to your home. Many ${cityName} cat vets offer emergency services — check their website for after-hours details.`
+    : dbCategory === 'groomer'
+    ? `Choose a groomer experienced with your cat's breed. Ask about handling techniques and cat-safe products. Reading recent Google reviews from ${cityName} cat owners is a great first step.`
+    : dbCategory === 'shelter'
+    ? `Ask about the cat's history, temperament and health. Reputable ${cityName} shelters will have desexed, vaccinated and microchipped cats ready for adoption.`
+    : `Look for shops stocking quality cat food brands, a range of toys and accessories, and knowledgeable staff who can advise on nutrition.`,
+  q3: dbCategory === 'vet'
+    ? `Some ${cityName} vet clinics offer payment plans or accept pet insurance from providers like Bow Wow Meow or Petinsurance.com.au to reduce out-of-pocket costs.`
+    : `Prices vary across ${cityName}. We recommend calling ahead to compare and ask about specials or loyalty programs.`
+};
+
+const faqSchema = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    { "@type": "Question", "name": `How do I find a ${catInfo.label.toLowerCase()} near me in ${cityName}?`, "acceptedAnswer": { "@type": "Answer", "text": faqAnswers.q1 } },
+    { "@type": "Question", "name": `What should I look for in a ${catInfo.label.toLowerCase()} in ${cityName}?`, "acceptedAnswer": { "@type": "Answer", "text": faqAnswers.q2 } },
+    { "@type": "Question", "name": `Are there low-cost ${catInfo.plural.toLowerCase()} in ${cityName}?`, "acceptedAnswer": { "@type": "Answer", "text": faqAnswers.q3 } },
+  ]
+};
+
+function getCatImgUrl(cat: any): string {
+  const img = cat.cat_images?.find((i: any) => i.is_primary) || cat.cat_images?.[0];
+  if (!img?.storage_path) return '/placeholder-cat.svg';
+  const p = img.storage_path;
+  if (p.startsWith('http')) return p;
+  if (p.startsWith('cats/')) return `${SUPABASE_URL}/storage/v1/object/public/${p}`;
+  return `${SUPABASE_URL}/storage/v1/object/public/cat-images/${p}`;
+}
+---
+
+<Layout title={pageTitle} description={pageDesc} schema={[...schemas, faqSchema]}>
+
+  <!-- Header -->
+  <div class="bg-warm-white border-b border-sand/30">
+    <div class="max-w-5xl mx-auto px-4 sm:px-6 py-10">
+      <nav class="text-xs text-gray-400 mb-4 flex items-center gap-2 flex-wrap">
+        <a href="/" class="hover:text-terracotta">Home</a>
+        <span>/</span>
+        <a href={`/near-me/${city}`} class="hover:text-terracotta">Near Me {cityName}</a>
+        <span>/</span>
+        <span class="text-gray-600 font-medium">{catInfo.plural}</span>
+      </nav>
+
+      <p class="text-terracotta text-xs font-bold uppercase tracking-widest mb-2">{catInfo.emoji} {cityName}</p>
+      <h1 class="font-display text-4xl md:text-5xl font-bold text-gray-950 mb-3">
+        {catInfo.plural} Near Me<br/>in {cityName}
+      </h1>
+      <p class="text-gray-500 text-base max-w-2xl mb-6">{catInfo.description}</p>
+
+      <div class="flex items-center gap-3 flex-wrap mb-6">
+        <span class={`inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-bold border ${catInfo.color}`}>
+          {catInfo.emoji} {services?.length || 0} {catInfo.plural} found in {cityName}
+        </span>
+        <span class="text-xs text-gray-400">Updated June 2026</span>
+      </div>
+
+      <div class="flex flex-wrap gap-2 mb-3">
+        {categories.map(cat => (
+          <a href={`/near-me/${city}/${cat}`}
+             class={`px-4 py-1.5 rounded-full text-xs font-semibold border transition-all ${cat === category ? 'bg-terracotta text-white border-terracotta' : 'bg-white border-gray-200 text-gray-600 hover:border-terracotta hover:text-terracotta'}`}>
+            {categoryMap[cat]?.emoji} {categoryMap[cat]?.label}s
+          </a>
+        ))}
+      </div>
+
+      <div class="flex flex-wrap gap-2">
+        {auCities.map(c => (
+          <a href={`/near-me/${c.toLowerCase().replace(' ', '-')}/${category}`}
+             class={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${c === cityName ? 'bg-charcoal text-white border-charcoal' : 'bg-white border-gray-200 text-gray-500 hover:border-terracotta hover:text-terracotta'}`}>
+            {c}
+          </a>
+        ))}
+      </div>
+    </div>
+  </div>
+
+  <div class="max-w-5xl mx-auto px-4 sm:px-6 py-10">
+
+    <!-- Services Grid -->
+    {services && services.length > 0 ? (
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-14">
+        {services.map((s: any) => (
+          <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-md transition-all group">
+            <div class="flex items-start justify-between mb-3">
+              <div class="flex-1 min-w-0">
+                <span class={`text-xs font-bold uppercase tracking-wider block mb-1 ${catInfo.color.split(' ')[0]}`}>
+                  {catInfo.emoji} {catInfo.label}
+                </span>
+                <a href={`https://www.google.com/maps/search/${encodeURIComponent(s.name + ' ' + s.city)}`}
+   target="_blank" rel="noopener noreferrer"
+   class="group/map flex items-center gap-1.5 mt-1.5 text-xs text-blue-500 hover:text-blue-700 font-medium">
+  <svg class="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+    <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/>
+  </svg>
+  View on Google Maps
+</a>
+              </div>
+              {s.rating && (
+                <span class={`ml-2 flex-shrink-0 text-xs font-bold px-2 py-1 rounded-full border ${catInfo.color}`}>⭐ {s.rating}</span>
+              )}
+            </div>
+            {s.address && (
+              <p class="text-gray-400 text-xs mb-1.5 flex items-start gap-1.5">
+                <svg class="w-3 h-3 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/></svg>
+                <span>{s.address}, {s.city}</span>
+              </p>
+            )}
+            {s.phone && (
+              <a href={`tel:${s.phone}`} class="text-gray-500 text-xs flex items-center gap-1.5 hover:text-terracotta transition-colors mb-1.5">
+                <svg class="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z"/></svg>
+                {s.phone}
+              </a>
+            )}
+            {s.website && (
+              <a href={s.website} target="_blank" rel="noopener noreferrer"
+                 class="inline-flex items-center gap-1 text-terracotta text-xs font-medium hover:underline mt-2">
+                Visit website
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+              </a>
+            )}
+          </div>
+        ))}
+      </div>
+    ) : (
+      <div class="text-center py-16 bg-warm-white rounded-2xl mb-14">
+        <p class="text-5xl mb-3">{catInfo.emoji}</p>
+        <p class="font-display text-xl font-bold text-gray-950 mb-2">No {catInfo.plural.toLowerCase()} listed yet in {cityName}</p>
+        <p class="text-gray-400 text-sm">Check back soon — we're adding new listings daily.</p>
+      </div>
+    )}
+
+    <!-- Local cats — Horizontal cards -->
+    {cats && cats.length > 0 && (
+      <section class="mb-14">
+        <div class="flex items-end justify-between mb-5">
+          <div>
+            <p class="text-terracotta text-xs font-bold uppercase tracking-widest mb-1">Local Listings</p>
+            <h2 class="font-display text-2xl font-bold text-gray-950">Kittens for Sale in {cityName}</h2>
+          </div>
+          <a href={`/cats-for-sale?city=${city}`} class="text-terracotta font-semibold text-sm hover:underline flex items-center gap-1">
+            View all
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+          </a>
+        </div>
+        <div class="flex flex-col gap-3">
+          {cats.map((cat: any) => (
+            <a href={`/cats-for-sale/${cat.slug}`}
+               class="group flex items-center gap-4 bg-white border border-gray-100 rounded-2xl p-3 hover:shadow-md hover:border-terracotta/30 transition-all shadow-sm">
+              <div class="w-20 h-20 rounded-xl overflow-hidden bg-warm-white flex-shrink-0">
+                <img src={getCatImgUrl(cat)} alt={`${cat.breed} for sale in ${cat.city}`}
+                     class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                     width="80" height="80" loading="lazy"
+                     onerror="this.onerror=null;this.src='/placeholder-cat.svg';" />
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="text-terracotta text-xs font-bold uppercase tracking-wide mb-0.5">{cat.breed}</p>
+                <p class="font-semibold text-gray-900 text-sm truncate group-hover:text-terracotta transition-colors">{cat.title}</p>
+                <p class="text-gray-400 text-xs mt-0.5 flex items-center gap-1">
+                  <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/></svg>
+                  {cat.city}, {cat.state}
+                </p>
+              </div>
+              <div class="flex-shrink-0 text-right">
+                <p class={`font-bold text-sm ${cat.price === 0 ? 'text-green-600' : 'text-forest'}`}>
+                  {cat.price === 0 ? 'FREE' : `A$${cat.price.toLocaleString()}`}
+                </p>
+                <p class="text-xs text-gray-400 mt-0.5">View →</p>
+              </div>
+            </a>
+          ))}
+        </div>
+      </section>
+    )}
+
+    <!-- FAQ — Accordion -->
+    <section class="mb-10">
+      <div class="flex items-center gap-3 mb-6">
+        <span class="bg-terracotta text-white text-xs font-bold px-3 py-1.5 rounded-full">FAQ</span>
+        <h2 class="font-display text-xl font-bold text-gray-950">
+          {catInfo.plural} in {cityName} — Common Questions
+        </h2>
+      </div>
+      <div class="space-y-3">
+        {[
+          {
+            q: `How do I find a ${catInfo.label.toLowerCase()} near me in ${cityName}?`,
+            a: faqAnswers.q1
+          },
+          {
+            q: `What should I look for in a ${catInfo.label.toLowerCase()} in ${cityName}?`,
+            a: faqAnswers.q2
+          },
+          {
+            q: `Are there low-cost ${catInfo.plural.toLowerCase()} in ${cityName}?`,
+            a: faqAnswers.q3
+          },
+        ].map((item) => (
+          <details class="group bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
+            <summary class="flex items-center justify-between px-5 py-4 cursor-pointer list-none hover:bg-warm-white transition-colors">
+              <span class="font-semibold text-gray-900 text-sm pr-4">{item.q}</span>
+              <svg class="w-4 h-4 text-gray-400 flex-shrink-0 group-open:rotate-180 transition-transform duration-200"
+                   fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+              </svg>
+            </summary>
+            <div class="px-5 pb-5 pt-3 text-gray-500 text-sm leading-relaxed border-t border-gray-50">
+              {item.a}
+            </div>
+          </details>
+        ))}
+      </div>
+    </section>
+
+    <!-- Related pages -->
+    <section>
+      <h2 class="font-display text-lg font-bold text-gray-950 mb-4">More Cat Services in Australia</h2>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {auCities.filter(c => c !== cityName).slice(0, 8).map(c => (
+          <a href={`/near-me/${c.toLowerCase().replace(' ', '-')}/${category}`}
+             class="bg-white border border-gray-100 rounded-xl px-4 py-3 text-sm text-gray-600 hover:border-terracotta hover:text-terracotta transition-all shadow-sm font-medium">
+            {catInfo.emoji} {catInfo.plural} in {c}
+          </a>
+        ))}
+      </div>
+    </section>
+
+  </div>
+</Layout>

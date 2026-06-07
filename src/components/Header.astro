@@ -1,0 +1,196 @@
+---
+const currentPath = Astro.url.pathname;
+
+const nearMeLinks = [
+  { href: '/near-me/sydney/cat-vet',      label: '🏥 Cat Vets Near Me' },
+  { href: '/near-me/sydney/cat-groomer',  label: '✂️ Cat Groomers' },
+  { href: '/near-me/sydney/cat-shelter',  label: '🏠 Shelters & Rescues' },
+  { href: '/near-me/sydney/pet-shop',     label: '🛒 Pet Shops' },
+];
+
+const cities = ['Sydney','Melbourne','Brisbane','Perth','Adelaide','Gold Coast','Canberra','Hobart','Darwin'];
+---
+
+<header class="sticky top-0 z-50 bg-white border-b border-gray-100 shadow-sm">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex items-center justify-between h-18 py-3">
+
+      <!-- Logo -->
+      <a href="/" class="flex items-center gap-3 group flex-shrink-0">
+        <div class="w-10 h-10 bg-terracotta rounded-xl flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform">
+          <span class="text-xl">🐱</span>
+        </div>
+        <div class="flex flex-col leading-none">
+          <span class="font-display text-lg font-bold text-charcoal tracking-tight">
+            InfoDog<span class="text-terracotta">Cats</span>
+          </span>
+          <span class="text-xs text-gray-400 font-body">Australia's Cat Marketplace</span>
+        </div>
+      </a>
+
+      <!-- Desktop Nav -->
+      <nav class="hidden lg:flex items-center gap-1">
+
+        <!-- Home -->
+        <a href="/"
+           class={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${currentPath === '/' ? 'bg-terracotta/10 text-terracotta' : 'text-gray-600 hover:bg-gray-50 hover:text-charcoal'}`}>
+          Home
+        </a>
+
+        <!--   Kittens for Sale -->
+        <a href="/cats-for-sale"
+           class={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${currentPath.startsWith('/cats-for-sale') ? 'bg-terracotta/10 text-terracotta' : 'text-gray-600 hover:bg-gray-50 hover:text-charcoal'}`}>
+            Kittens for Sale
+        </a>
+
+        <!-- Near Me — Dropdown -->
+        <div class="relative group">
+          <button class={`flex items-center gap-1 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${currentPath.startsWith('/near-me') ? 'bg-terracotta/10 text-terracotta' : 'text-gray-600 hover:bg-gray-50 hover:text-charcoal'}`}>
+            Near Me
+            <svg class="w-3.5 h-3.5 mt-0.5 group-hover:rotate-180 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+            </svg>
+          </button>
+
+          <!-- Dropdown -->
+          <div class="absolute top-full left-0 mt-1 w-72 bg-white rounded-2xl shadow-xl border border-gray-100 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+            <div class="p-3">
+
+              <!-- Categories -->
+              <p class="text-xs font-bold text-gray-400 uppercase tracking-widest px-2 mb-2">By Service</p>
+              {nearMeLinks.map(link => (
+                <a href={link.href}
+                   class="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm text-gray-700 hover:bg-warm-white hover:text-terracotta transition-colors font-medium">
+                  {link.label}
+                </a>
+              ))}
+
+              <div class="border-t border-gray-100 my-2"></div>
+
+              <!-- Cities -->
+              <p class="text-xs font-bold text-gray-400 uppercase tracking-widest px-2 mb-2">By City</p>
+              <div class="flex flex-wrap gap-1.5 px-2">
+                {cities.map(c => (
+                  <a href={`/near-me/${c.toLowerCase().replace(' ', '-')}`}
+                     class="px-2.5 py-1 bg-warm-white text-gray-600 text-xs font-medium rounded-full hover:bg-terracotta hover:text-white transition-colors">
+                    {c}
+                  </a>
+                ))}
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+        <!-- Blog -->
+        <a href="/blog"
+           class={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${currentPath.startsWith('/blog') ? 'bg-terracotta/10 text-terracotta' : 'text-gray-600 hover:bg-gray-50 hover:text-charcoal'}`}>
+          Blog
+        </a>
+
+        <!-- Contact -->
+        <a href="/contact"
+           class={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${currentPath === '/contact' ? 'bg-terracotta/10 text-terracotta' : 'text-gray-600 hover:bg-gray-50 hover:text-charcoal'}`}>
+          Contact
+        </a>
+
+      </nav>
+
+      <!-- Right Side -->
+      <div class="hidden lg:flex items-center gap-3">
+        <a href="/login" class="text-sm font-medium text-gray-600 hover:text-charcoal transition-colors px-3 py-2">
+          Sign In
+        </a>
+        <a href="/post-ad"
+           class="flex items-center gap-2 bg-terracotta text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-terracotta-light transition-all shadow-sm hover:shadow-md hover:-translate-y-0.5">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/>
+          </svg>
+          Post Free Ad
+        </a>
+      </div>
+
+      <!-- Mobile Menu Button -->
+      <button id="menu-btn" class="lg:hidden p-2.5 rounded-xl hover:bg-gray-50 transition-colors" aria-label="Open menu">
+        <svg id="icon-open" class="w-5 h-5 text-charcoal" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+        </svg>
+        <svg id="icon-close" class="w-5 h-5 text-charcoal hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Mobile Menu -->
+  <div id="mobile-menu" class="hidden lg:hidden border-t border-gray-100 bg-white">
+    <div class="max-w-7xl mx-auto px-4 py-4 space-y-1">
+
+      <a href="/" class={`flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-colors ${currentPath === '/' ? 'bg-terracotta/10 text-terracotta' : 'text-gray-700 hover:bg-gray-50'}`}>
+        Home
+      </a>
+      <a href="/cats-for-sale" class={`flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-colors ${currentPath.startsWith('/cats-for-sale') ? 'bg-terracotta/10 text-terracotta' : 'text-gray-700 hover:bg-gray-50'}`}>
+          Kittens for Sale
+      </a>
+
+      <!-- Near Me mobile accordion -->
+      <details class="group">
+        <summary class={`flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium cursor-pointer list-none transition-colors ${currentPath.startsWith('/near-me') ? 'bg-terracotta/10 text-terracotta' : 'text-gray-700 hover:bg-gray-50'}`}>
+          Near Me
+          <svg class="w-4 h-4 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+          </svg>
+        </summary>
+        <div class="pl-4 pt-1 pb-2 space-y-1">
+          {nearMeLinks.map(link => (
+            <a href={link.href} class="flex items-center px-4 py-2.5 rounded-xl text-sm text-gray-600 hover:bg-warm-white hover:text-terracotta transition-colors">
+              {link.label}
+            </a>
+          ))}
+          <div class="border-t border-gray-100 my-2"></div>
+          <div class="flex flex-wrap gap-1.5 px-4">
+            {cities.map(c => (
+              <a href={`/near-me/${c.toLowerCase().replace(' ', '-')}`}
+                 class="px-2.5 py-1 bg-warm-white text-gray-600 text-xs font-medium rounded-full hover:bg-terracotta hover:text-white transition-colors">
+                {c}
+              </a>
+            ))}
+          </div>
+        </div>
+      </details>
+
+      <a href="/blog" class={`flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-colors ${currentPath.startsWith('/blog') ? 'bg-terracotta/10 text-terracotta' : 'text-gray-700 hover:bg-gray-50'}`}>
+        Blog
+      </a>
+      <a href="/contact" class={`flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-colors ${currentPath === '/contact' ? 'bg-terracotta/10 text-terracotta' : 'text-gray-700 hover:bg-gray-50'}`}>
+        Contact
+      </a>
+
+      <div class="pt-3 pb-1 border-t border-gray-100 mt-2 flex flex-col gap-2">
+        <a href="/login" class="flex items-center justify-center px-4 py-3 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 border border-gray-200 transition-colors">
+          Sign In
+        </a>
+        <a href="/post-ad" class="flex items-center justify-center gap-2 bg-terracotta text-white px-5 py-3 rounded-xl font-semibold text-sm shadow-sm">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/>
+          </svg>
+          Post Free Ad
+        </a>
+      </div>
+    </div>
+  </div>
+</header>
+
+<script>
+  const btn = document.getElementById('menu-btn');
+  const menu = document.getElementById('mobile-menu');
+  const iconOpen = document.getElementById('icon-open');
+  const iconClose = document.getElementById('icon-close');
+
+  btn?.addEventListener('click', () => {
+    const isOpen = !menu?.classList.contains('hidden');
+    menu?.classList.toggle('hidden');
+    iconOpen?.classList.toggle('hidden', !isOpen);
+    iconClose?.classList.toggle('hidden', isOpen);
+  });
+</script>
