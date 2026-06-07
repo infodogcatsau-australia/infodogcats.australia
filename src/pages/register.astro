@@ -358,7 +358,7 @@ if (Astro.request.method === 'POST') {
       email,
       password: pw,
       options: {
-        emailRedirectTo: 'https://www.infodogcats.com/dashboard',
+        emailRedirectTo: 'https://www.infodogcats.com/auth/callback',
         data: {
           full_name: `${firstName} ${lastName}`.trim(),
           phone,

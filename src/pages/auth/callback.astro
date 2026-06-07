@@ -1,0 +1,86 @@
+---
+export const prerender = false;
+---
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Confirming your account...</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      background: #FDFAF5;
+    }
+    .box {
+      text-align: center;
+      padding: 40px;
+    }
+    .spinner {
+      font-size: 48px;
+      animation: spin 1s linear infinite;
+      display: inline-block;
+    }
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    h2 { color: #2C2C2C; margin-top: 16px; }
+    p { color: #666; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <div class="spinner">🐱</div>
+    <h2>Confirming your account...</h2>
+    <p>Please wait a moment.</p>
+  </div>
+
+  <script>
+    import { createClient } from '@supabase/supabase-js';
+
+    const sb = createClient(
+      import.meta.env.PUBLIC_SUPABASE_URL,
+      import.meta.env.PUBLIC_SUPABASE_ANON_KEY
+    );
+
+    async function handleCallback() {
+      // قراءة الـ hash من URL
+      const hash = window.location.hash.substring(1);
+      const params = new URLSearchParams(hash);
+
+      const accessToken = params.get('access_token');
+      const refreshToken = params.get('refresh_token');
+      const type = params.get('type');
+
+      if (accessToken && refreshToken) {
+        // تعيين الـ session
+        const { error } = await sb.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken
+        });
+
+        if (error) {
+          window.location.href = '/login?error=confirmation_failed';
+        } else {
+          if (type === 'signup') {
+            window.location.href = '/dashboard?welcome=1';
+          } else if (type === 'recovery') {
+            window.location.href = '/reset-password';
+          } else {
+            window.location.href = '/dashboard';
+          }
+        }
+      } else {
+        window.location.href = '/login?error=invalid_token';
+      }
+    }
+
+    handleCallback();
+  </script>
+</body>
+</html>
