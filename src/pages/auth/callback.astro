@@ -7,7 +7,7 @@ const supabase = createSupabaseServerClient(Astro.request, responseHeaders);
 const next = Astro.url.searchParams.get('next') || '/dashboard';
 const code = Astro.url.searchParams.get('code');
 
-// PKCE flow (email confirmation)
+// PKCE flow (email confirmation link)
 if (code) {
   const { error } = await supabase.auth.exchangeCodeForSession(code);
   if (!error) {
@@ -19,63 +19,7 @@ if (code) {
   return Astro.redirect('/login?error=confirmation_failed');
 }
 
-// After signInWithPassword — session already in browser, just redirect
-// The @supabase/ssr client will pick up the session from cookies on next request
+// After normal login — just redirect to next
+// Session is already stored in browser by Supabase client
+return Astro.redirect(next);
 ---
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8" />
-  <title>Redirecting...</title>
-  <style>
-    body { font-family: Arial, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: #FDFAF5; }
-    .box { text-align: center; padding: 40px; }
-    .spinner { font-size: 48px; animation: spin 1s linear infinite; display: inline-block; }
-    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-    h2 { color: #2C2C2C; margin-top: 16px; }
-    p { color: #666; font-size: 14px; }
-  </style>
-</head>
-<body>
-  <div class="box">
-    <div class="spinner">🐱</div>
-    <h2>Signing you in...</h2>
-    <p>Please wait a moment.</p>
-  </div>
-
-  <script define:vars={{ next }}>
-    import { createClient } from '@supabase/supabase-js';
-
-    const sb = createClient(
-      import.meta.env.PUBLIC_SUPABASE_URL,
-      import.meta.env.PUBLIC_SUPABASE_ANON_KEY
-    );
-
-    async function handleCallback() {
-      // Handle hash tokens (email confirmation with implicit flow)
-      const hash = window.location.hash.substring(1);
-      const hashParams = new URLSearchParams(hash);
-      const accessToken = hashParams.get('access_token');
-      const refreshToken = hashParams.get('refresh_token');
-      const type = hashParams.get('type');
-
-      if (accessToken && refreshToken) {
-        await sb.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
-        await new Promise(r => setTimeout(r, 300));
-        window.location.href = type === 'recovery' ? '/reset-password' : next;
-        return;
-      }
-
-      // After normal login — session already set, just go to next
-      const { data: { session } } = await sb.auth.getSession();
-      if (session) {
-        window.location.href = next;
-      } else {
-        window.location.href = '/login';
-      }
-    }
-
-    handleCallback();
-  </script>
-</body>
-</html>
