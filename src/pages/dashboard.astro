@@ -1,52 +1,35 @@
 ---
 export const prerender = false;
 import Layout from '../components/Layout.astro';
-import { createSupabaseServerClient } from '../lib/supabase';
-
-const responseHeaders = new Headers();
-const supabase = createSupabaseServerClient(Astro.request, responseHeaders);
-const { data: { session } } = await supabase.auth.getSession();
-if (!session) return Astro.redirect('/login?next=/dashboard', 302);
-
-const { data: cats } = await supabase
-  .from('cats')
-  .select('id, slug, title, breed, price, city, state, status, is_approved, created_at, views')
-  .eq('user_id', session.user.id)
-  .order('created_at', { ascending: false });
-
-const userName = session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'there';
-const totalViews = cats?.reduce((sum: number, c: any) => sum + (c.views || 0), 0) || 0;
-const activeCats = cats?.filter((c: any) => c.status === 'active' && c.is_approved).length || 0;
-const pendingCats = cats?.filter((c: any) => !c.is_approved).length || 0;
 ---
 <Layout title="My Dashboard | InfoDogCats" description="Manage your cat listings on InfoDogCats Australia.">
-  <div class="min-h-screen bg-warm-white">
+  <!-- Loading state -->
+  <div id="loading" class="min-h-screen bg-warm-white flex items-center justify-center">
+    <div class="text-center">
+      <p class="text-4xl mb-4">🐱</p>
+      <p class="text-gray-400 text-sm">Loading your dashboard...</p>
+    </div>
+  </div>
 
-    <!-- Dashboard Header -->
+  <!-- Dashboard content (hidden until session confirmed) -->
+  <div id="dashboard-content" class="hidden min-h-screen bg-warm-white">
+
     <div class="bg-white border-b border-sand/30 shadow-sm">
       <div class="max-w-5xl mx-auto px-4 py-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div class="flex items-center gap-3">
-          <div class="w-12 h-12 bg-terracotta rounded-full flex items-center justify-center text-white font-bold text-lg shadow-sm">
-            {userName.charAt(0).toUpperCase()}
-          </div>
+          <div class="w-12 h-12 bg-terracotta rounded-full flex items-center justify-center text-white font-bold text-lg shadow-sm" id="user-avatar">?</div>
           <div>
-            <h1 class="font-display text-xl font-bold text-charcoal">Hello, {userName}! 👋</h1>
-            <p class="text-gray-400 text-xs">{session.user.email}</p>
+            <h1 class="font-display text-xl font-bold text-charcoal" id="user-name">Hello! 👋</h1>
+            <p class="text-gray-400 text-xs" id="user-email"></p>
           </div>
         </div>
         <div class="flex items-center gap-3">
-          <a href="/post-ad"
-             class="flex items-center gap-2 bg-terracotta text-white px-5 py-2.5 rounded-xl font-semibold text-sm hover:bg-terracotta-light transition-colors shadow-sm">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/>
-            </svg>
+          <a href="/post-ad" class="flex items-center gap-2 bg-terracotta text-white px-5 py-2.5 rounded-xl font-semibold text-sm hover:bg-terracotta-light transition-colors shadow-sm">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
             Post New Ad
           </a>
-          <button id="signout-btn"
-            class="flex items-center gap-2 border border-gray-200 text-gray-500 px-4 py-2.5 rounded-xl text-sm font-medium hover:border-red-300 hover:text-red-500 transition-all">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
-            </svg>
+          <button id="signout-btn" class="flex items-center gap-2 border border-gray-200 text-gray-500 px-4 py-2.5 rounded-xl text-sm font-medium hover:border-red-300 hover:text-red-500 transition-all">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
             Sign Out
           </button>
         </div>
@@ -54,118 +37,34 @@ const pendingCats = cats?.filter((c: any) => !c.is_approved).length || 0;
     </div>
 
     <div class="max-w-5xl mx-auto px-4 py-8">
-
       <!-- Stats -->
       <div class="grid grid-cols-3 gap-4 mb-8">
-        {[
-          { label: 'Active Listings', value: activeCats, icon: '🟢', color: 'text-green-600' },
-          { label: 'Pending Review', value: pendingCats, icon: '🟡', color: 'text-amber-600' },
-          { label: 'Total Views', value: totalViews, icon: '👁️', color: 'text-blue-600' },
-        ].map(stat => (
-          <div class="bg-white rounded-2xl p-5 border border-sand/30 shadow-sm text-center">
-            <p class="text-2xl mb-1">{stat.icon}</p>
-            <p class={`text-2xl font-bold font-display ${stat.color}`}>{stat.value}</p>
-            <p class="text-xs text-gray-400 mt-0.5">{stat.label}</p>
-          </div>
-        ))}
+        <div class="bg-white rounded-2xl p-5 border border-sand/30 shadow-sm text-center">
+          <p class="text-2xl mb-1">🟢</p>
+          <p class="text-2xl font-bold font-display text-green-600" id="stat-active">0</p>
+          <p class="text-xs text-gray-400 mt-0.5">Active Listings</p>
+        </div>
+        <div class="bg-white rounded-2xl p-5 border border-sand/30 shadow-sm text-center">
+          <p class="text-2xl mb-1">🟡</p>
+          <p class="text-2xl font-bold font-display text-amber-600" id="stat-pending">0</p>
+          <p class="text-xs text-gray-400 mt-0.5">Pending Review</p>
+        </div>
+        <div class="bg-white rounded-2xl p-5 border border-sand/30 shadow-sm text-center">
+          <p class="text-2xl mb-1">👁️</p>
+          <p class="text-2xl font-bold font-display text-blue-600" id="stat-views">0</p>
+          <p class="text-xs text-gray-400 mt-0.5">Total Views</p>
+        </div>
       </div>
 
       <!-- Listings -->
       <div class="flex items-center justify-between mb-4">
         <h2 class="font-display text-xl font-bold text-charcoal">My Listings</h2>
-        <span class="text-xs text-gray-400">{cats?.length || 0} total</span>
+        <span class="text-xs text-gray-400" id="listings-count">0 total</span>
       </div>
-
-      {cats && cats.length > 0 ? (
-        <div class="space-y-3">
-          {cats.map((cat: any) => {
-            const isLive = cat.is_approved && cat.status === 'active';
-            const isPending = !cat.is_approved;
-            const isSold = cat.status === 'sold';
-            return (
-              <div class="bg-white rounded-2xl p-5 border border-sand/30 shadow-sm flex items-center gap-4 hover:shadow-md transition-shadow">
-                <div class={`w-2 h-12 rounded-full flex-shrink-0 ${isLive ? 'bg-green-400' : isPending ? 'bg-amber-400' : isSold ? 'bg-gray-400' : 'bg-red-400'}`}></div>
-
-                <div class="flex-1 min-w-0">
-                  <div class="flex items-center gap-2 mb-1 flex-wrap">
-                    <span class={`text-xs font-bold px-2.5 py-0.5 rounded-full ${
-                      isLive ? 'bg-green-100 text-green-700' :
-                      isPending ? 'bg-amber-100 text-amber-700' :
-                      isSold ? 'bg-gray-100 text-gray-600' :
-                      'bg-red-100 text-red-600'
-                    }`}>
-                      {isLive ? '● Live' : isPending ? '○ Pending Review' : isSold ? '✓ Sold' : cat.status}
-                    </span>
-                    <span class="text-xs text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full">{cat.breed}</span>
-                  </div>
-                  <p class="font-semibold text-charcoal truncate text-sm">{cat.title}</p>
-                  <div class="flex items-center gap-3 mt-1 text-xs text-gray-400">
-                    <span>{cat.price === 0 ? 'FREE' : `A$${cat.price?.toLocaleString()}`}</span>
-                    <span>·</span>
-                    <span>📍 {cat.city}, {cat.state}</span>
-                    {cat.views > 0 && (
-                      <>
-                        <span>·</span>
-                        <span>👁️ {cat.views} views</span>
-                      </>
-                    )}
-                    <span>·</span>
-                    <span>{new Date(cat.created_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}</span>
-                  </div>
-                </div>
-
-                <div class="flex items-center gap-2 flex-shrink-0">
-                  {isLive && (
-                    <a href={`/cats-for-sale/${cat.slug}`} target="_blank"
-                       class="text-xs bg-terracotta/10 text-terracotta px-3 py-1.5 rounded-lg hover:bg-terracotta/20 transition-colors font-medium">
-                      View
-                    </a>
-                  )}
-                  {!isSold && (
-                    <button
-                      data-id={cat.id}
-                      data-title={cat.title}
-                      class="mark-sold-btn text-xs bg-gray-50 text-gray-500 px-3 py-1.5 rounded-lg hover:bg-gray-100 transition-colors font-medium border border-gray-200">
-                      Mark Sold
-                    </button>
-                  )}
-                  <button
-                    data-id={cat.id}
-                    data-title={cat.title}
-                    class="delete-btn text-xs text-red-400 hover:text-red-600 font-medium px-2 py-1.5 hover:bg-red-50 rounded-lg transition-colors">
-                    Delete
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      ) : (
-        <div class="text-center py-20 bg-white rounded-3xl border border-sand/30">
-          <p class="text-6xl mb-4">🐱</p>
-          <p class="font-display text-xl font-bold text-charcoal mb-2">No listings yet</p>
-          <p class="text-gray-400 text-sm mb-6">Post your first free cat listing today</p>
-          <a href="/post-ad"
-             class="bg-terracotta text-white px-8 py-3 rounded-full font-semibold hover:bg-terracotta-light transition-colors inline-block">
-            Post Free Ad
-          </a>
-        </div>
-      )}
-
-      {pendingCats > 0 && (
-        <div class="mt-6 bg-amber-50 border border-amber-200 rounded-2xl p-5 flex gap-3">
-          <span class="text-amber-500 text-xl flex-shrink-0">⏳</span>
-          <div>
-            <p class="font-semibold text-amber-800 text-sm">Listings pending review</p>
-            <p class="text-amber-700 text-xs mt-1">Your listings are being reviewed by our team. This usually takes less than 24 hours. You'll receive an email when they go live.</p>
-          </div>
-        </div>
-      )}
+      <div id="listings-container"></div>
 
       <div class="mt-8 pt-6 border-t border-sand/30">
-        <a href="/" class="text-sm text-gray-400 hover:text-terracotta transition-colors flex items-center gap-1">
-          ← Back to homepage
-        </a>
+        <a href="/" class="text-sm text-gray-400 hover:text-terracotta transition-colors flex items-center gap-1">← Back to homepage</a>
       </div>
     </div>
   </div>
@@ -173,42 +72,122 @@ const pendingCats = cats?.filter((c: any) => !c.is_approved).length || 0;
 
 <script>
   import { createClient } from '@supabase/supabase-js';
+
   const sb = createClient(
     (import.meta as any).env.PUBLIC_SUPABASE_URL,
     (import.meta as any).env.PUBLIC_SUPABASE_ANON_KEY
   );
 
-  // Sign out
-  document.getElementById('signout-btn')?.addEventListener('click', async () => {
-    const btn = document.getElementById('signout-btn') as HTMLButtonElement;
-    if (btn) { btn.textContent = 'Signing out...'; btn.disabled = true; }
-    await sb.auth.signOut();
-    window.location.href = '/';
-  });
+  async function init() {
+    // Check session in browser
+    const { data: { session } } = await sb.auth.getSession();
 
-  // Mark as sold
-  document.querySelectorAll('.mark-sold-btn').forEach(btn => {
-    btn.addEventListener('click', async (e) => {
-      const el = e.target as HTMLElement;
-      const id = el.dataset.id;
-      const title = el.dataset.title;
-      if (!confirm(`Mark "${title}" as sold?`)) return;
-      const { error } = await sb.from('cats').update({ status: 'sold' }).eq('id', id);
-      if (!error) window.location.reload();
-      else alert('Error updating listing');
-    });
-  });
+    if (!session) {
+      window.location.href = '/login?next=/dashboard';
+      return;
+    }
 
-  // Delete
-  document.querySelectorAll('.delete-btn').forEach(btn => {
-    btn.addEventListener('click', async (e) => {
-      const el = e.target as HTMLElement;
-      const id = el.dataset.id;
-      const title = el.dataset.title;
-      if (!confirm(`Are you sure you want to delete "${title}"? This cannot be undone.`)) return;
-      const { error } = await sb.from('cats').update({ status: 'deleted' }).eq('id', id);
-      if (!error) window.location.reload();
-      else alert('Error deleting listing');
+    // Show dashboard
+    document.getElementById('loading')!.classList.add('hidden');
+    document.getElementById('dashboard-content')!.classList.remove('hidden');
+
+    // Set user info
+    const user = session.user;
+    const userName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'there';
+    document.getElementById('user-name')!.textContent = `Hello, ${userName}! 👋`;
+    document.getElementById('user-email')!.textContent = user.email || '';
+    document.getElementById('user-avatar')!.textContent = userName.charAt(0).toUpperCase();
+
+    // Load listings
+    const { data: cats } = await sb
+      .from('cats')
+      .select('id, slug, title, breed, price, city, state, status, is_approved, created_at, views')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
+
+    if (cats) {
+      const active = cats.filter((c: any) => c.status === 'active' && c.is_approved).length;
+      const pending = cats.filter((c: any) => !c.is_approved).length;
+      const views = cats.reduce((sum: number, c: any) => sum + (c.views || 0), 0);
+
+      document.getElementById('stat-active')!.textContent = String(active);
+      document.getElementById('stat-pending')!.textContent = String(pending);
+      document.getElementById('stat-views')!.textContent = String(views);
+      document.getElementById('listings-count')!.textContent = `${cats.length} total`;
+
+      if (cats.length > 0) {
+        document.getElementById('listings-container')!.innerHTML = cats.map((cat: any) => {
+          const isLive = cat.is_approved && cat.status === 'active';
+          const isPending = !cat.is_approved;
+          const isSold = cat.status === 'sold';
+          const statusClass = isLive ? 'bg-green-400' : isPending ? 'bg-amber-400' : isSold ? 'bg-gray-400' : 'bg-red-400';
+          const badgeClass = isLive ? 'bg-green-100 text-green-700' : isPending ? 'bg-amber-100 text-amber-700' : isSold ? 'bg-gray-100 text-gray-600' : 'bg-red-100 text-red-600';
+          const statusText = isLive ? '● Live' : isPending ? '○ Pending Review' : isSold ? '✓ Sold' : cat.status;
+          const price = cat.price === 0 ? 'FREE' : `A$${cat.price?.toLocaleString()}`;
+          const date = new Date(cat.created_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
+
+          return `
+            <div class="bg-white rounded-2xl p-5 border border-sand/30 shadow-sm flex items-center gap-4 hover:shadow-md transition-shadow mb-3">
+              <div class="w-2 h-12 rounded-full flex-shrink-0 ${statusClass}"></div>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 mb-1 flex-wrap">
+                  <span class="text-xs font-bold px-2.5 py-0.5 rounded-full ${badgeClass}">${statusText}</span>
+                  <span class="text-xs text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full">${cat.breed}</span>
+                </div>
+                <p class="font-semibold text-charcoal truncate text-sm">${cat.title}</p>
+                <div class="flex items-center gap-3 mt-1 text-xs text-gray-400">
+                  <span>${price}</span><span>·</span>
+                  <span>📍 ${cat.city}, ${cat.state}</span>
+                  ${cat.views > 0 ? `<span>·</span><span>👁️ ${cat.views} views</span>` : ''}
+                  <span>·</span><span>${date}</span>
+                </div>
+              </div>
+              <div class="flex items-center gap-2 flex-shrink-0">
+                ${isLive ? `<a href="/cats-for-sale/${cat.slug}" target="_blank" class="text-xs bg-terracotta/10 text-terracotta px-3 py-1.5 rounded-lg hover:bg-terracotta/20 font-medium">View</a>` : ''}
+                ${!isSold ? `<button data-id="${cat.id}" data-title="${cat.title}" class="mark-sold-btn text-xs bg-gray-50 text-gray-500 px-3 py-1.5 rounded-lg hover:bg-gray-100 font-medium border border-gray-200">Mark Sold</button>` : ''}
+                <button data-id="${cat.id}" data-title="${cat.title}" class="delete-btn text-xs text-red-400 hover:text-red-600 font-medium px-2 py-1.5 hover:bg-red-50 rounded-lg">Delete</button>
+              </div>
+            </div>`;
+        }).join('');
+      } else {
+        document.getElementById('listings-container')!.innerHTML = `
+          <div class="text-center py-20 bg-white rounded-3xl border border-sand/30">
+            <p class="text-6xl mb-4">🐱</p>
+            <p class="font-display text-xl font-bold text-charcoal mb-2">No listings yet</p>
+            <p class="text-gray-400 text-sm mb-6">Post your first free cat listing today</p>
+            <a href="/post-ad" class="bg-terracotta text-white px-8 py-3 rounded-full font-semibold hover:bg-terracotta-light transition-colors inline-block">Post Free Ad</a>
+          </div>`;
+      }
+    }
+
+    // Sign out
+    document.getElementById('signout-btn')?.addEventListener('click', async () => {
+      await sb.auth.signOut();
+      window.location.href = '/';
     });
-  });
+
+    // Mark as sold
+    document.querySelectorAll('.mark-sold-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const el = e.target as HTMLElement;
+        if (!confirm(`Mark "${el.dataset.title}" as sold?`)) return;
+        const { error } = await sb.from('cats').update({ status: 'sold' }).eq('id', el.dataset.id);
+        if (!error) window.location.reload();
+        else alert('Error updating listing');
+      });
+    });
+
+    // Delete
+    document.querySelectorAll('.delete-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const el = e.target as HTMLElement;
+        if (!confirm(`Delete "${el.dataset.title}"? This cannot be undone.`)) return;
+        const { error } = await sb.from('cats').update({ status: 'deleted' }).eq('id', el.dataset.id);
+        if (!error) window.location.reload();
+        else alert('Error deleting listing');
+      });
+    });
+  }
+
+  init();
 </script>
