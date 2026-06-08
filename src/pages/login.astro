@@ -119,8 +119,13 @@ if (Astro.request.method === 'POST') {
 <script src="https://www.google.com/recaptcha/api.js" async defer></script>
 
 <script define:vars={{ next }}>
+  window.__next = next;
+</script>
+
+<script>
   import { createClient } from '@supabase/supabase-js';
   const sb = createClient(import.meta.env.PUBLIC_SUPABASE_URL, import.meta.env.PUBLIC_SUPABASE_ANON_KEY);
+  const next = window.__next || '/dashboard';
 
   // Show/hide password
   const pwInput = document.getElementById('password');
