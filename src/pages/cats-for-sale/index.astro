@@ -12,8 +12,8 @@ const q = url.searchParams.get('q') || '';
 
 let query = supabase
   .from('cats')
-  .select('id, slug, title, breed, price, city, state, cat_images(storage_path, is_primary)')
-  .eq('status', 'active')
+  .select('id, slug, title, breed, price, city, state, status, adopted, cat_images(storage_path, is_primary)')
+  .in('status', ['active', 'sold'])
   .eq('is_approved', true)
   .order('created_at', { ascending: false })
   .limit(48);

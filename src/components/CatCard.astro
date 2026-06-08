@@ -8,6 +8,7 @@ interface Props {
     city: string;
     state: string;
     status?: string;
+    adopted?: boolean;
     cat_images: { storage_path: string; is_primary: boolean }[];
   }
 }
@@ -21,11 +22,7 @@ function getImgUrl(path: string): string {
   if (!path) return '/placeholder-cat.svg';
   // URL كامل — استخدمه مباشرة
   if (path.startsWith('http')) return path;
-  // bucket cats
-  if (path.startsWith('cats/')) {
-    return `${SUPABASE_URL}/storage/v1/object/public/${path}`;
-  }
-  // bucket cat-images (الافتراضي)
+  // كل المسارات تذهب إلى bucket cat-images
   return `${SUPABASE_URL}/storage/v1/object/public/cat-images/${path}`;
 }
 
@@ -52,12 +49,14 @@ const isFree = cat.price === 0;
     <div class={`absolute top-3 right-3 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-md ${
       isSold ? 'bg-gray-500' : isFree ? 'bg-green-500' : 'bg-terracotta'
     }`}>
-      {isSold ? 'SOLD' : isFree ? 'FREE' : `A$${cat.price.toLocaleString()}`}
+      {isSold ? (cat.adopted ? 'Adopted' : 'SOLD') : isFree ? 'FREE' : `A$${cat.price.toLocaleString()}`}
     </div>
-    <!-- Sold overlay -->
+    <!-- Sold/Adopted overlay -->
     {isSold && (
-      <div class="absolute inset-0 bg-black/25 flex items-center justify-center">
-        <span class="bg-white/95 text-gray-700 font-bold text-sm px-4 py-2 rounded-full shadow">SOLD</span>
+      <div class="absolute inset-0 bg-black/30 flex items-center justify-center">
+        <span class={`font-bold text-sm px-4 py-2 rounded-full shadow-lg ${cat.adopted ? 'bg-blue-500 text-white' : 'bg-white/95 text-gray-700'}`}>
+          {cat.adopted ? '🏠 Adopted' : '✓ Sold'}
+        </span>
       </div>
     )}
   </div>

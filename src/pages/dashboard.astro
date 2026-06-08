@@ -120,9 +120,10 @@ import Layout from '../components/Layout.astro';
           const isLive = cat.is_approved && cat.status === 'active';
           const isPending = !cat.is_approved;
           const isSold = cat.status === 'sold';
+          const isAdopted = isSold && cat.adopted;
           const statusClass = isLive ? 'bg-green-400' : isPending ? 'bg-amber-400' : isSold ? 'bg-gray-400' : 'bg-red-400';
-          const badgeClass = isLive ? 'bg-green-100 text-green-700' : isPending ? 'bg-amber-100 text-amber-700' : isSold ? 'bg-gray-100 text-gray-600' : 'bg-red-100 text-red-600';
-          const statusText = isLive ? '● Live' : isPending ? '○ Pending Review' : isSold ? '✓ Sold' : cat.status;
+          const badgeClass = isLive ? 'bg-green-100 text-green-700' : isPending ? 'bg-amber-100 text-amber-700' : isAdopted ? 'bg-blue-100 text-blue-700' : isSold ? 'bg-gray-100 text-gray-600' : 'bg-red-100 text-red-600';
+          const statusText = isLive ? '● Live' : isPending ? '○ Pending Review' : isAdopted ? '🏠 Adopted' : isSold ? '✓ Sold' : cat.status;
           const price = cat.price === 0 ? 'FREE' : `A$${cat.price?.toLocaleString()}`;
           const date = new Date(cat.created_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
 
