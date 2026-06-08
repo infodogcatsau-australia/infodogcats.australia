@@ -190,7 +190,8 @@ if (Astro.request.method === 'POST') {
       btn.textContent = 'Sign In →';
       grecaptcha?.reset();
     } else {
-      window.location.href = next;
+      // Redirect through auth/callback to set server-side session cookie
+      window.location.href = '/auth/callback?next=' + encodeURIComponent(next);
     }
   });
 </script>
