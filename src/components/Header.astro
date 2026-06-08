@@ -98,8 +98,11 @@ const cities = ['Sydney','Melbourne','Brisbane','Perth','Adelaide','Gold Coast',
 
       <!-- Right Side -->
       <div class="hidden lg:flex items-center gap-3">
-        <a href="/login" class="text-sm font-medium text-gray-600 hover:text-charcoal transition-colors px-3 py-2">
+        <a href="/login" id="desktop-signin" class="text-sm font-medium text-gray-600 hover:text-charcoal transition-colors px-3 py-2">
           Sign In
+        </a>
+        <a href="/dashboard" id="desktop-dashboard" class="hidden text-sm font-medium text-terracotta hover:text-terracotta-light transition-colors px-3 py-2">
+          My Dashboard
         </a>
         <a href="/post-ad"
            class="flex items-center gap-2 bg-terracotta text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-terracotta-light transition-all shadow-sm hover:shadow-md hover:-translate-y-0.5">
@@ -167,8 +170,11 @@ const cities = ['Sydney','Melbourne','Brisbane','Perth','Adelaide','Gold Coast',
       </a>
 
       <div class="pt-3 pb-1 border-t border-gray-100 mt-2 flex flex-col gap-2">
-        <a href="/login" class="flex items-center justify-center px-4 py-3 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 border border-gray-200 transition-colors">
+        <a href="/login" id="mobile-signin" class="flex items-center justify-center px-4 py-3 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 border border-gray-200 transition-colors">
           Sign In
+        </a>
+        <a href="/dashboard" id="mobile-dashboard" class="hidden flex items-center justify-center px-4 py-3 rounded-xl text-sm font-medium text-terracotta hover:bg-terracotta/10 border border-terracotta transition-colors">
+          My Dashboard
         </a>
         <a href="/post-ad" class="flex items-center justify-center gap-2 bg-terracotta text-white px-5 py-3 rounded-xl font-semibold text-sm shadow-sm">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -182,6 +188,8 @@ const cities = ['Sydney','Melbourne','Brisbane','Perth','Adelaide','Gold Coast',
 </header>
 
 <script>
+  import { createClient } from '@supabase/supabase-js';
+
   const btn = document.getElementById('menu-btn');
   const menu = document.getElementById('mobile-menu');
   const iconOpen = document.getElementById('icon-open');
@@ -192,5 +200,20 @@ const cities = ['Sydney','Melbourne','Brisbane','Perth','Adelaide','Gold Coast',
     menu?.classList.toggle('hidden');
     iconOpen?.classList.toggle('hidden', !isOpen);
     iconClose?.classList.toggle('hidden', isOpen);
+  });
+
+  // Check session and show Dashboard or Sign In
+  const sb = createClient(
+    (import.meta as any).env.PUBLIC_SUPABASE_URL,
+    (import.meta as any).env.PUBLIC_SUPABASE_ANON_KEY
+  );
+
+  sb.auth.getSession().then(({ data: { session } }) => {
+    if (session) {
+      document.getElementById('desktop-signin')?.classList.add('hidden');
+      document.getElementById('desktop-dashboard')?.classList.remove('hidden');
+      document.getElementById('mobile-signin')?.classList.add('hidden');
+      document.getElementById('mobile-dashboard')?.classList.remove('hidden');
+    }
   });
 </script>
