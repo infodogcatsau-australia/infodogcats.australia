@@ -202,11 +202,27 @@ if (Astro.request.method === 'POST') {
   const MAX_FILES = 5;
 
   async function init() {
-    let { data: { session } } = await supabase.auth.getSession();
+    // قراءة الـ session من localStorage مباشرة
+    let session: any = null;
+    try {
+      const stored = localStorage.getItem('sb-sitmziehzhvqeftydtdr-auth-token');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        // تعيين الـ session في الـ client
+        await supabase.auth.setSession({
+          access_token: parsed.access_token,
+          refresh_token: parsed.refresh_token
+        });
+        const { data } = await supabase.auth.getSession();
+        session = data.session;
+      }
+    } catch(e) {}
+
     if (!session) {
-      const { data } = await supabase.auth.refreshSession();
+      const { data } = await supabase.auth.getSession();
       session = data.session;
     }
+
     if (!session) {
       document.getElementById('auth-required')?.classList.remove('hidden');
       const form = document.getElementById('post-form') as HTMLElement;
@@ -332,14 +348,7 @@ if (Astro.request.method === 'POST') {
       const title = (data.get('title') as string).trim();
       const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + Date.now();
 
-      // إنشاء client مع Bearer token صريح
-      const authedClient = createClient(
-        (import.meta as any).env.PUBLIC_SUPABASE_URL,
-        (import.meta as any).env.PUBLIC_SUPABASE_ANON_KEY,
-        { global: { headers: { Authorization: `Bearer ${session!.access_token}` } } }
-      );
-
-      const { data: cat, error: catErr } = await authedClient.from('cats').insert({
+      const { data: cat, error: catErr } = await supabase.from('cats').insert({
         user_id: session.user.id,
         title,
         slug,
@@ -368,11 +377,11 @@ if (Astro.request.method === 'POST') {
           if (!ALLOWED_TYPES.includes(file.type) || file.size > MAX_SIZE) continue;
           const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
           const path = `${cat.id}/${i}-${Date.now()}.${ext}`;
-          const { error: upErr } = await authedClient.storage.from('cat-images').upload(path, file, {
+          const { error: upErr } = await supabase.storage.from('cat-images').upload(path, file, {
             contentType: file.type, upsert: false
           });
           if (!upErr) {
-            await authedClient.from('cat_images').insert({
+            await supabase.from('cat_images').insert({
               cat_id: cat.id, storage_path: path, is_primary: i === 0, sort_order: i
             });
           }
