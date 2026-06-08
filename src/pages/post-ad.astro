@@ -1,37 +1,86 @@
 ---
 export const prerender = false;
 import Layout from '../components/Layout.astro';
-const recaptchaSiteKey = import.meta.env.PUBLIC_RECAPTCHA_SITE_KEY;
+import { createClient } from '@supabase/supabase-js';
 
-// Server-side: فحص رفع الصور والـ reCAPTCHA
+const recaptchaSiteKey = import.meta.env.PUBLIC_RECAPTCHA_SITE_KEY;
+const SUPABASE_URL = import.meta.env.PUBLIC_SUPABASE_URL;
+const SUPABASE_SERVICE_ROLE = import.meta.env.SUPABASE_SERVICE_ROLE;
+const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const MAX_SIZE = 2 * 1024 * 1024;
+
 if (Astro.request.method === 'POST') {
   const contentType = Astro.request.headers.get('content-type') || '';
 
-  // reCAPTCHA verification (JSON request)
+  // reCAPTCHA verification
   if (contentType.includes('application/json')) {
     try {
       const body = await Astro.request.json();
-      const token = body.recaptchaToken;
 
-      if (!token) {
+      // إذا كان طلب حفظ الإعلان
+      if (body.action === 'save-ad') {
+        const { recaptchaToken, accessToken, adData } = body;
+
+        // 1. التحقق من reCAPTCHA
+        const verify = await fetch('https://www.google.com/recaptcha/api/siteverify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: `secret=${import.meta.env.RECAPTCHA_SECRET_KEY}&response=${recaptchaToken}`
+        });
+        const captchaResult = await verify.json();
+        if (!captchaResult.success) {
+          return new Response(JSON.stringify({ error: 'reCAPTCHA failed' }), {
+            status: 400, headers: { 'Content-Type': 'application/json' }
+          });
+        }
+
+        // 2. التحقق من المستخدم عبر access token
+        const userSb = createClient(SUPABASE_URL, import.meta.env.PUBLIC_SUPABASE_ANON_KEY, {
+          global: { headers: { Authorization: `Bearer ${accessToken}` } }
+        });
+        const { data: { user }, error: userErr } = await userSb.auth.getUser();
+        if (userErr || !user) {
+          return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+            status: 401, headers: { 'Content-Type': 'application/json' }
+          });
+        }
+
+        // 3. حفظ الإعلان باستخدام Service Role (يتجاوز RLS بأمان)
+        const adminSb = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE);
+        const { data: cat, error: catErr } = await adminSb.from('cats').insert({
+          user_id: user.id,
+          ...adData
+        }).select().single();
+
+        if (catErr) {
+          return new Response(JSON.stringify({ error: catErr.message }), {
+            status: 500, headers: { 'Content-Type': 'application/json' }
+          });
+        }
+
+        return new Response(JSON.stringify({ success: true, cat }), {
+          status: 200, headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
+      // reCAPTCHA only check
+      const { recaptchaToken } = body;
+      if (!recaptchaToken) {
         return new Response(JSON.stringify({ error: 'reCAPTCHA token missing' }), {
           status: 400, headers: { 'Content-Type': 'application/json' }
         });
       }
-
       const verify = await fetch('https://www.google.com/recaptcha/api/siteverify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: `secret=${import.meta.env.RECAPTCHA_SECRET_KEY}&response=${token}`
+        body: `secret=${import.meta.env.RECAPTCHA_SECRET_KEY}&response=${recaptchaToken}`
       });
-
       const result = await verify.json();
       if (!result.success) {
         return new Response(JSON.stringify({ error: 'reCAPTCHA failed' }), {
           status: 400, headers: { 'Content-Type': 'application/json' }
         });
       }
-
       return new Response(JSON.stringify({ success: true }), {
         status: 200, headers: { 'Content-Type': 'application/json' }
       });
@@ -42,28 +91,23 @@ if (Astro.request.method === 'POST') {
     }
   }
 
-  // File upload validation (multipart request)
+  // File upload validation
   if (contentType.includes('multipart/form-data')) {
     try {
       const formData = await Astro.request.formData();
       const files = formData.getAll('images') as File[];
-
-      const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
-      const maxSize = 2 * 1024 * 1024; // 2MB
-
       for (const file of files) {
-        if (!allowedTypes.includes(file.type)) {
-          return new Response(JSON.stringify({ error: `Invalid file type: ${file.type}. Only JPG, PNG, WebP allowed.` }), {
+        if (!ALLOWED_TYPES.includes(file.type)) {
+          return new Response(JSON.stringify({ error: `Invalid file type. Only JPG, PNG, WebP allowed.` }), {
             status: 400, headers: { 'Content-Type': 'application/json' }
           });
         }
-        if (file.size > maxSize) {
-          return new Response(JSON.stringify({ error: `File too large: ${file.name}. Max 2MB per image.` }), {
+        if (file.size > MAX_SIZE) {
+          return new Response(JSON.stringify({ error: `File too large. Max 2MB per image.` }), {
             status: 400, headers: { 'Content-Type': 'application/json' }
           });
         }
       }
-
       return new Response(JSON.stringify({ success: true }), {
         status: 200, headers: { 'Content-Type': 'application/json' }
       });
@@ -77,7 +121,7 @@ if (Astro.request.method === 'POST') {
 ---
 <Layout
   title="Post a Free Cat Ad in Australia | InfoDogCats"
-  description="List your cat or kitten for sale for free. Reach thousands of cat lovers across Australia. Simple, fast, and completely free."
+  description="List your cat or kitten for sale for free. Reach thousands of cat lovers across Australia."
 >
   <div class="max-w-2xl mx-auto px-4 py-10">
     <h1 class="font-display text-3xl font-bold text-charcoal mb-1">Post a Free Cat Ad</h1>
@@ -167,7 +211,6 @@ if (Astro.request.method === 'POST') {
         </div>
       </div>
 
-      <!-- reCAPTCHA -->
       <div>
         <div class="g-recaptcha" data-sitekey={recaptchaSiteKey} data-theme="light"></div>
         <p class="text-xs text-gray-400 mt-1">Protected by reCAPTCHA — <a href="https://policies.google.com/privacy" target="_blank" class="hover:underline">Privacy</a> · <a href="https://policies.google.com/terms" target="_blank" class="hover:underline">Terms</a></p>
@@ -198,35 +241,16 @@ if (Astro.request.method === 'POST') {
   );
 
   const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
-  const MAX_SIZE = 2 * 1024 * 1024; // 2MB
+  const MAX_SIZE = 2 * 1024 * 1024;
   const MAX_FILES = 5;
 
   async function init() {
-    // قراءة الـ session من localStorage مباشرة
-    let session: any = null;
-    try {
-      const stored = localStorage.getItem('sb-sitmziehzhvqeftydtdr-auth-token');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        // تعيين الـ session في الـ client
-        await supabase.auth.setSession({
-          access_token: parsed.access_token,
-          refresh_token: parsed.refresh_token
-        });
-        const { data } = await supabase.auth.getSession();
-        session = data.session;
-      }
-    } catch(e) {}
-
-    if (!session) {
-      const { data } = await supabase.auth.getSession();
-      session = data.session;
-    }
+    const { data: { session } } = await supabase.auth.getSession();
 
     if (!session) {
       document.getElementById('auth-required')?.classList.remove('hidden');
       const form = document.getElementById('post-form') as HTMLElement;
-      if (form) { form.style.display = 'none'; }
+      if (form) form.style.display = 'none';
       return;
     }
 
@@ -240,31 +264,24 @@ if (Astro.request.method === 'POST') {
     imageInput.addEventListener('change', () => {
       fileError.classList.add('hidden');
       preview.innerHTML = '';
-
       if (!imageInput.files) return;
-
-      const files = Array.from(imageInput.files).slice(0, MAX_FILES);
-
-      for (const file of files) {
-        // Client-side file validation
+      for (const file of Array.from(imageInput.files).slice(0, MAX_FILES)) {
         if (!ALLOWED_TYPES.includes(file.type)) {
-          fileError.textContent = `Invalid file type: ${file.name}. Only JPG, PNG, WebP allowed.`;
+          fileError.textContent = `Invalid file type. Only JPG, PNG, WebP allowed.`;
           fileError.classList.remove('hidden');
           imageInput.value = '';
           preview.innerHTML = '';
           return;
         }
         if (file.size > MAX_SIZE) {
-          fileError.textContent = `File too large: ${file.name}. Max 2MB per image.`;
+          fileError.textContent = `File too large. Max 2MB per image.`;
           fileError.classList.remove('hidden');
           imageInput.value = '';
           preview.innerHTML = '';
           return;
         }
-
-        const url = URL.createObjectURL(file);
         const img = document.createElement('img');
-        img.src = url;
+        img.src = URL.createObjectURL(file);
         img.className = 'w-20 h-16 object-cover rounded-lg border border-sand';
         preview.appendChild(img);
       }
@@ -275,10 +292,8 @@ if (Astro.request.method === 'POST') {
       const btn = document.getElementById('submit-btn') as HTMLButtonElement;
       const errorEl = document.getElementById('form-error')!;
       const successEl = document.getElementById('form-success')!;
-
       errorEl.classList.add('hidden');
 
-      // 1. التحقق من reCAPTCHA
       const captchaToken = (window as any).grecaptcha?.getResponse();
       if (!captchaToken) {
         errorEl.textContent = 'Please complete the reCAPTCHA verification.';
@@ -289,111 +304,79 @@ if (Astro.request.method === 'POST') {
       btn.disabled = true;
       btn.textContent = 'Submitting...';
 
-      // 2. التحقق من reCAPTCHA على السيرفر
+      const form = e.target as HTMLFormElement;
+      const data = new FormData(form);
+      const title = (data.get('title') as string).trim();
+      const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + Date.now();
+
+      // إرسال كل شيء للسيرفر دفعة واحدة
       try {
-        const captchaRes = await fetch('/post-ad', {
+        const res = await fetch('/post-ad', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ recaptchaToken: captchaToken })
+          body: JSON.stringify({
+            action: 'save-ad',
+            recaptchaToken: captchaToken,
+            accessToken: session.access_token,
+            adData: {
+              title,
+              slug,
+              breed: (data.get('breed') as string).trim(),
+              price: parseFloat(data.get('price') as string),
+              age_months: data.get('age_months') ? parseInt(data.get('age_months') as string) : null,
+              description: (data.get('description') as string).trim(),
+              city: (data.get('city') as string).trim(),
+              state: data.get('state'),
+              contact_phone: data.get('contact_phone') || null,
+              contact_email: data.get('contact_email') || null,
+            }
+          })
         });
 
-        if (!captchaRes.ok) {
-          errorEl.textContent = 'reCAPTCHA verification failed. Please try again.';
+        const result = await res.json();
+        if (!res.ok) {
+          errorEl.textContent = result.error || 'Error saving ad.';
           errorEl.classList.remove('hidden');
           btn.disabled = false;
           btn.textContent = 'Submit Free Ad';
           (window as any).grecaptcha?.reset();
           return;
         }
-      } catch (e) {
+
+        const cat = result.cat;
+
+        // رفع الصور
+        const files = imageInput.files;
+        if (files && files.length > 0) {
+          for (let i = 0; i < Math.min(files.length, MAX_FILES); i++) {
+            const file = files[i];
+            if (!ALLOWED_TYPES.includes(file.type) || file.size > MAX_SIZE) continue;
+            const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+            const path = `${cat.id}/${i}-${Date.now()}.${ext}`;
+            const { error: upErr } = await supabase.storage.from('cat-images').upload(path, file, {
+              contentType: file.type, upsert: false
+            });
+            if (!upErr) {
+              await supabase.from('cat_images').insert({
+                cat_id: cat.id, storage_path: path, is_primary: i === 0, sort_order: i
+              });
+            }
+          }
+        }
+
+        successEl.classList.remove('hidden');
+        form.reset();
+        preview.innerHTML = '';
+        btn.textContent = 'Submit Free Ad';
+        btn.disabled = false;
+        (window as any).grecaptcha?.reset();
+
+      } catch (err) {
         errorEl.textContent = 'Network error. Please try again.';
         errorEl.classList.remove('hidden');
         btn.disabled = false;
         btn.textContent = 'Submit Free Ad';
-        return;
       }
-
-      // 3. التحقق من الصور على السيرفر
-      const files = imageInput.files;
-      if (files && files.length > 0) {
-        const fileFormData = new FormData();
-        Array.from(files).slice(0, MAX_FILES).forEach(f => fileFormData.append('images', f));
-
-        try {
-          const fileRes = await fetch('/post-ad', {
-            method: 'POST',
-            body: fileFormData
-          });
-
-          if (!fileRes.ok) {
-            const fileResData = await fileRes.json();
-            errorEl.textContent = fileResData.error || 'File validation failed.';
-            errorEl.classList.remove('hidden');
-            btn.disabled = false;
-            btn.textContent = 'Submit Free Ad';
-            return;
-          }
-        } catch (e) {
-          errorEl.textContent = 'File upload error. Please try again.';
-          errorEl.classList.remove('hidden');
-          btn.disabled = false;
-          btn.textContent = 'Submit Free Ad';
-          return;
-        }
-      }
-
-      // 4. حفظ الإعلان في Supabase
-      const form = e.target as HTMLFormElement;
-      const data = new FormData(form);
-      const title = (data.get('title') as string).trim();
-      const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + Date.now();
-
-      const { data: cat, error: catErr } = await supabase.from('cats').insert({
-        user_id: session.user.id,
-        title,
-        slug,
-        breed: (data.get('breed') as string).trim(),
-        price: parseFloat(data.get('price') as string),
-        age_months: data.get('age_months') ? parseInt(data.get('age_months') as string) : null,
-        description: (data.get('description') as string).trim(),
-        city: (data.get('city') as string).trim(),
-        state: data.get('state'),
-        contact_phone: data.get('contact_phone') || null,
-        contact_email: data.get('contact_email') || null,
-      }).select().single();
-
-      if (catErr) {
-        errorEl.textContent = 'Error saving ad: ' + catErr.message;
-        errorEl.classList.remove('hidden');
-        btn.disabled = false;
-        btn.textContent = 'Submit Free Ad';
-        return;
-      }
-
-      // 5. رفع الصور إلى Supabase Storage
-      if (files && files.length > 0) {
-        for (let i = 0; i < Math.min(files.length, MAX_FILES); i++) {
-          const file = files[i];
-          if (!ALLOWED_TYPES.includes(file.type) || file.size > MAX_SIZE) continue;
-          const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
-          const path = `${cat.id}/${i}-${Date.now()}.${ext}`;
-          const { error: upErr } = await supabase.storage.from('cat-images').upload(path, file, {
-            contentType: file.type, upsert: false
-          });
-          if (!upErr) {
-            await supabase.from('cat_images').insert({
-              cat_id: cat.id, storage_path: path, is_primary: i === 0, sort_order: i
-            });
-          }
-        }
-      }
-
-      successEl.classList.remove('hidden');
-      form.reset();
-      preview.innerHTML = '';
-      btn.textContent = 'Submit Free Ad';
-      btn.disabled = false;
-      (window as any).grecaptcha?.reset();
     });
   }
 
