@@ -146,9 +146,9 @@ import Layout from '../components/Layout.astro';
                 ${isLive ? `<a href="/cats-for-sale/${cat.slug}" target="_blank" class="text-xs bg-terracotta/10 text-terracotta px-3 py-1.5 rounded-lg hover:bg-terracotta/20 font-medium">View</a>` : ''}
                 ${!isSold ? `
                   <button data-id="${cat.id}" data-title="${cat.title}" class="mark-sold-btn text-xs bg-gray-50 text-gray-500 px-3 py-1.5 rounded-lg hover:bg-gray-100 font-medium border border-gray-200">Sold</button>
-                  <button data-id="${cat.id}" data-title="${cat.title}" class="mark-adopted-btn text-xs bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg hover:bg-blue-100 font-medium border border-blue-200">Adopted</button>
+                  <button data-id="${cat.id}" data-title="${cat.title}" class="mark-adopted-btn text-xs bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg hover:bg-blue-100 font-medium border border-blue-200">Adopted 🏠</button>
                 ` : ''}
-                <a href="/edit-ad/${cat.id}" class="text-xs bg-amber-50 text-amber-600 px-3 py-1.5 rounded-lg hover:bg-amber-100 font-medium border border-amber-200">Edit</a>
+                <a href="/edit-ad/${cat.id}" class="text-xs bg-amber-50 text-amber-600 px-3 py-1.5 rounded-lg hover:bg-amber-100 font-medium border border-amber-200">✏️ Edit</a>
                 <button data-id="${cat.id}" data-title="${cat.title}" class="delete-btn text-xs text-red-400 hover:text-red-600 font-medium px-2 py-1.5 hover:bg-red-50 rounded-lg">Delete</button>
               </div>
             </div>`;
@@ -170,14 +170,26 @@ import Layout from '../components/Layout.astro';
       window.location.href = '/';
     });
 
+    // Helper: update cat via server
+    async function updateCat(id: string, data: object) {
+      const { data: { session } } = await sb.auth.getSession();
+      if (!session) return { error: 'Not logged in' };
+      const res = await fetch('/api/update-cat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accessToken: session.access_token, catId: id, data })
+      });
+      return await res.json();
+    }
+
     // Mark as sold
     document.querySelectorAll('.mark-sold-btn').forEach(btn => {
       btn.addEventListener('click', async (e) => {
         const el = e.target as HTMLElement;
         if (!confirm(`Mark "${el.dataset.title}" as sold?`)) return;
-        const { error } = await sb.from('cats').update({ status: 'sold', adopted: false }).eq('id', el.dataset.id);
-        if (!error) window.location.reload();
-        else alert('Error updating listing');
+        const result = await updateCat(el.dataset.id!, { status: 'sold', adopted: false });
+        if (result.success) window.location.reload();
+        else alert('Error: ' + result.error);
       });
     });
 
@@ -186,9 +198,9 @@ import Layout from '../components/Layout.astro';
       btn.addEventListener('click', async (e) => {
         const el = e.target as HTMLElement;
         if (!confirm(`Mark "${el.dataset.title}" as adopted? 🏠`)) return;
-        const { error } = await sb.from('cats').update({ status: 'sold', adopted: true }).eq('id', el.dataset.id);
-        if (!error) window.location.reload();
-        else alert('Error updating listing');
+        const result = await updateCat(el.dataset.id!, { status: 'sold', adopted: true });
+        if (result.success) window.location.reload();
+        else alert('Error: ' + result.error);
       });
     });
 
@@ -197,9 +209,9 @@ import Layout from '../components/Layout.astro';
       btn.addEventListener('click', async (e) => {
         const el = e.target as HTMLElement;
         if (!confirm(`Delete "${el.dataset.title}"? This cannot be undone.`)) return;
-        const { error } = await sb.from('cats').update({ status: 'deleted' }).eq('id', el.dataset.id);
-        if (!error) window.location.reload();
-        else alert('Error deleting listing');
+        const result = await updateCat(el.dataset.id!, { status: 'deleted' });
+        if (result.success) window.location.reload();
+        else alert('Error: ' + result.error);
       });
     });
   }
