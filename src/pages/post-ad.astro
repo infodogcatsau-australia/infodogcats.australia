@@ -345,23 +345,18 @@ if (Astro.request.method === 'POST') {
 
         const cat = result.cat;
 
-        // رفع الصور
+        // رفع الصور عبر السيرفر
         const files = imageInput.files;
         if (files && files.length > 0) {
-          for (let i = 0; i < Math.min(files.length, MAX_FILES); i++) {
-            const file = files[i];
-            if (!ALLOWED_TYPES.includes(file.type) || file.size > MAX_SIZE) continue;
-            const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
-            const path = `${cat.id}/${i}-${Date.now()}.${ext}`;
-            const { error: upErr } = await supabase.storage.from('cat-images').upload(path, file, {
-              contentType: file.type, upsert: false
-            });
-            if (!upErr) {
-              await supabase.from('cat_images').insert({
-                cat_id: cat.id, storage_path: path, is_primary: i === 0, sort_order: i
-              });
-            }
-          }
+          const fileFormData = new FormData();
+          fileFormData.append('cat_id', cat.id);
+          fileFormData.append('access_token', session.access_token);
+          Array.from(files).slice(0, MAX_FILES).forEach(f => fileFormData.append('images', f));
+
+          await fetch('/post-ad', {
+            method: 'POST',
+            body: fileFormData
+          });
         }
 
         successEl.classList.remove('hidden');

@@ -1,0 +1,267 @@
+---
+export const prerender = false;
+import Layout from '../../components/Layout.astro';
+import { createClient } from '@supabase/supabase-js';
+
+const SUPABASE_URL = import.meta.env.PUBLIC_SUPABASE_URL;
+const SUPABASE_SERVICE_ROLE = import.meta.env.SUPABASE_SERVICE_ROLE;
+const { id } = Astro.params;
+
+// Handle POST — update ad
+if (Astro.request.method === 'POST') {
+  const contentType = Astro.request.headers.get('content-type') || '';
+
+  if (contentType.includes('application/json')) {
+    try {
+      const body = await Astro.request.json();
+      const { accessToken, adData } = body;
+
+      // التحقق من المستخدم
+      const userSb = createClient(SUPABASE_URL, import.meta.env.PUBLIC_SUPABASE_ANON_KEY, {
+        global: { headers: { Authorization: `Bearer ${accessToken}` } }
+      });
+      const { data: { user }, error: userErr } = await userSb.auth.getUser();
+      if (userErr || !user) {
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+          status: 401, headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
+      // التحقق أن الإعلان ملك للمستخدم
+      const adminSb = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE);
+      const { data: cat } = await adminSb.from('cats').select('user_id').eq('id', id).single();
+      if (!cat || cat.user_id !== user.id) {
+        return new Response(JSON.stringify({ error: 'Forbidden' }), {
+          status: 403, headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
+      // تحديث الإعلان
+      const { error: updateErr } = await adminSb.from('cats').update({
+        ...adData,
+        is_approved: false // يعود للمراجعة بعد التعديل
+      }).eq('id', id);
+
+      if (updateErr) {
+        return new Response(JSON.stringify({ error: updateErr.message }), {
+          status: 500, headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
+      return new Response(JSON.stringify({ success: true }), {
+        status: 200, headers: { 'Content-Type': 'application/json' }
+      });
+    } catch (e) {
+      return new Response(JSON.stringify({ error: 'Server error' }), {
+        status: 500, headers: { 'Content-Type': 'application/json' }
+      });
+    }
+  }
+}
+---
+<Layout title="Edit Ad | InfoDogCats" description="Edit your cat listing on InfoDogCats Australia.">
+  <div class="max-w-2xl mx-auto px-4 py-10">
+    <div class="flex items-center gap-3 mb-6">
+      <a href="/dashboard" class="text-gray-400 hover:text-terracotta transition-colors text-sm">← Dashboard</a>
+      <span class="text-gray-300">/</span>
+      <h1 class="font-display text-2xl font-bold text-charcoal">Edit Listing</h1>
+    </div>
+
+    <div id="loading" class="text-center py-20">
+      <p class="text-4xl mb-4">🐱</p>
+      <p class="text-gray-400 text-sm">Loading your listing...</p>
+    </div>
+
+    <form id="edit-form" class="hidden space-y-5 bg-white rounded-2xl p-6 border border-sand/30 shadow-sm">
+      <div>
+        <label class="block text-sm font-semibold text-charcoal mb-1.5">Ad Title <span class="text-terracotta">*</span></label>
+        <input type="text" name="title" required maxlength="80"
+          class="w-full border border-sand rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta/50" />
+      </div>
+
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-semibold text-charcoal mb-1.5">Breed <span class="text-terracotta">*</span></label>
+          <input type="text" name="breed" required maxlength="50"
+            class="w-full border border-sand rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta/50" />
+        </div>
+        <div>
+          <label class="block text-sm font-semibold text-charcoal mb-1.5">Price (AUD) <span class="text-terracotta">*</span></label>
+          <input type="number" name="price" required min="0" max="99999" step="50"
+            class="w-full border border-sand rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta/50" />
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-sm font-semibold text-charcoal mb-1.5">Age (months)</label>
+        <input type="number" name="age_months" min="0" max="240"
+          class="w-full border border-sand rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta/50" />
+      </div>
+
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-semibold text-charcoal mb-1.5">City <span class="text-terracotta">*</span></label>
+          <input type="text" name="city" required maxlength="50"
+            class="w-full border border-sand rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta/50" />
+        </div>
+        <div>
+          <label class="block text-sm font-semibold text-charcoal mb-1.5">State <span class="text-terracotta">*</span></label>
+          <select name="state" required
+            class="w-full border border-sand rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta/50">
+            <option value="">Select</option>
+            <option value="NSW">NSW</option>
+            <option value="VIC">VIC</option>
+            <option value="QLD">QLD</option>
+            <option value="WA">WA</option>
+            <option value="SA">SA</option>
+            <option value="TAS">TAS</option>
+            <option value="ACT">ACT</option>
+            <option value="NT">NT</option>
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-sm font-semibold text-charcoal mb-1.5">Description <span class="text-terracotta">*</span></label>
+        <textarea name="description" required rows={5} maxlength="2000"
+          class="w-full border border-sand rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta/50 resize-none"></textarea>
+      </div>
+
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-semibold text-charcoal mb-1.5">Phone</label>
+          <input type="tel" name="contact_phone" maxlength="20"
+            class="w-full border border-sand rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta/50" />
+        </div>
+        <div>
+          <label class="block text-sm font-semibold text-charcoal mb-1.5">Email</label>
+          <input type="email" name="contact_email" maxlength="100"
+            class="w-full border border-sand rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta/50" />
+        </div>
+      </div>
+
+      <div class="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-xs text-amber-700">
+        ⚠️ After editing, your listing will go back to pending review (usually approved within 24 hours).
+      </div>
+
+      <div id="form-error" class="hidden bg-red-50 text-red-600 text-sm rounded-xl px-4 py-3 border border-red-200"></div>
+      <div id="form-success" class="hidden bg-green-50 text-green-700 text-sm rounded-xl px-4 py-3 border border-green-200">
+        ✅ Listing updated! It will appear after review. Redirecting to dashboard...
+      </div>
+
+      <div class="flex gap-3">
+        <a href="/dashboard"
+          class="flex-1 text-center border border-gray-200 text-gray-500 py-3 rounded-xl font-semibold text-sm hover:bg-gray-50 transition-colors">
+          Cancel
+        </a>
+        <button type="submit" id="save-btn"
+          class="flex-1 bg-terracotta text-white py-3 rounded-xl font-semibold text-sm hover:bg-terracotta-light transition-colors disabled:opacity-60">
+          Save Changes
+        </button>
+      </div>
+    </form>
+  </div>
+</Layout>
+
+<script>
+  import { createClient } from '@supabase/supabase-js';
+
+  const sb = createClient(
+    (import.meta as any).env.PUBLIC_SUPABASE_URL,
+    (import.meta as any).env.PUBLIC_SUPABASE_ANON_KEY
+  );
+
+  const catId = window.location.pathname.split('/').pop();
+
+  async function init() {
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session) {
+      window.location.href = '/login?next=/dashboard';
+      return;
+    }
+
+    // جلب بيانات الإعلان
+    const { data: cat, error } = await sb
+      .from('cats')
+      .select('*')
+      .eq('id', catId)
+      .eq('user_id', session.user.id)
+      .single();
+
+    if (error || !cat) {
+      window.location.href = '/dashboard';
+      return;
+    }
+
+    // إخفاء loading وإظهار النموذج
+    document.getElementById('loading')!.classList.add('hidden');
+    const form = document.getElementById('edit-form') as HTMLFormElement;
+    form.classList.remove('hidden');
+
+    // ملء النموذج بالبيانات الحالية
+    (form.querySelector('[name="title"]') as HTMLInputElement).value = cat.title || '';
+    (form.querySelector('[name="breed"]') as HTMLInputElement).value = cat.breed || '';
+    (form.querySelector('[name="price"]') as HTMLInputElement).value = cat.price || '';
+    (form.querySelector('[name="age_months"]') as HTMLInputElement).value = cat.age_months || '';
+    (form.querySelector('[name="city"]') as HTMLInputElement).value = cat.city || '';
+    (form.querySelector('[name="state"]') as HTMLSelectElement).value = cat.state || '';
+    (form.querySelector('[name="description"]') as HTMLTextAreaElement).value = cat.description || '';
+    (form.querySelector('[name="contact_phone"]') as HTMLInputElement).value = cat.contact_phone || '';
+    (form.querySelector('[name="contact_email"]') as HTMLInputElement).value = cat.contact_email || '';
+
+    // حفظ التعديلات
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('save-btn') as HTMLButtonElement;
+      const errorEl = document.getElementById('form-error')!;
+      const successEl = document.getElementById('form-success')!;
+      errorEl.classList.add('hidden');
+
+      btn.disabled = true;
+      btn.textContent = 'Saving...';
+
+      const data = new FormData(form);
+
+      try {
+        const res = await fetch(`/edit-ad/${catId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            accessToken: session.access_token,
+            adData: {
+              title: (data.get('title') as string).trim(),
+              breed: (data.get('breed') as string).trim(),
+              price: parseFloat(data.get('price') as string),
+              age_months: data.get('age_months') ? parseInt(data.get('age_months') as string) : null,
+              city: (data.get('city') as string).trim(),
+              state: data.get('state'),
+              description: (data.get('description') as string).trim(),
+              contact_phone: data.get('contact_phone') || null,
+              contact_email: data.get('contact_email') || null,
+            }
+          })
+        });
+
+        const result = await res.json();
+        if (!res.ok) {
+          errorEl.textContent = result.error || 'Error saving changes.';
+          errorEl.classList.remove('hidden');
+          btn.disabled = false;
+          btn.textContent = 'Save Changes';
+          return;
+        }
+
+        successEl.classList.remove('hidden');
+        setTimeout(() => window.location.href = '/dashboard', 2000);
+
+      } catch (err) {
+        errorEl.textContent = 'Network error. Please try again.';
+        errorEl.classList.remove('hidden');
+        btn.disabled = false;
+        btn.textContent = 'Save Changes';
+      }
+    });
+  }
+
+  init();
+</script>
