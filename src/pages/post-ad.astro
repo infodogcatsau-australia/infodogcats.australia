@@ -192,9 +192,18 @@ if (Astro.request.method === 'POST') {
 <script>
   import { createClient } from '@supabase/supabase-js';
 
+  // استخدام الـ session token الموجود في المتصفح
   const supabase = createClient(
     (import.meta as any).env.PUBLIC_SUPABASE_URL,
-    (import.meta as any).env.PUBLIC_SUPABASE_ANON_KEY
+    (import.meta as any).env.PUBLIC_SUPABASE_ANON_KEY,
+    {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+        storageKey: 'sb-sitmziehzhvqeftydtdr-auth-token',
+      }
+    }
   );
 
   const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
@@ -202,7 +211,15 @@ if (Astro.request.method === 'POST') {
   const MAX_FILES = 5;
 
   async function init() {
-    const { data: { session } } = await supabase.auth.getSession();
+    // محاولة الحصول على session مع refresh تلقائي
+    let { data: { session } } = await supabase.auth.getSession();
+    
+    // إذا لم توجد session، نحاول refresh
+    if (!session) {
+      const { data: refreshData } = await supabase.auth.refreshSession();
+      session = refreshData.session;
+    }
+
     if (!session) {
       document.getElementById('auth-required')?.classList.remove('hidden');
       const form = document.getElementById('post-form') as HTMLElement;
