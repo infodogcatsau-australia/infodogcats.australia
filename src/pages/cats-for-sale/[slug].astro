@@ -27,16 +27,21 @@ function getImgUrl(path: string, width = 900): string {
   if (!path) return '/placeholder-cat.svg';
   // URL كامل
   if (path.startsWith('http')) return path;
-  // bucket cats
-  if (path.startsWith('cats/')) {
-    return `${SUPABASE_URL}/storage/v1/object/public/${path}`;
-  }
-  // demo/ و blog/ و manual/ → cat-images bucket بدون transformation
-  if (path.startsWith('demo/') || path.startsWith('blog/') || path.startsWith('manual/')) {
+  // مسارات تبدأ بـ UUID (إعلانات المستخدمين) → cat-images bucket
+  // مثال: 78748d60-98e0.../0-1234567890.jpg
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}/.test(path)) {
     return `${SUPABASE_URL}/storage/v1/object/public/cat-images/${path}`;
   }
-  // باقي المسارات مع resize
-  return getImageUrl(path, width);
+  // demo/ و blog/ و manual/ و cats/ → cat-images bucket
+  if (path.startsWith('demo/') || path.startsWith('blog/') || path.startsWith('manual/') || path.startsWith('cats/')) {
+    return `${SUPABASE_URL}/storage/v1/object/public/cat-images/${path}`;
+  }
+  // wp-images → cat-images bucket
+  if (path.startsWith('wp-images/')) {
+    return `${SUPABASE_URL}/storage/v1/object/public/cat-images/${path}`;
+  }
+  // باقي المسارات
+  return `${SUPABASE_URL}/storage/v1/object/public/cat-images/${path}`;
 }
 
 const images = (cat.cat_images || []).sort((a: any, b: any) => a.sort_order - b.sort_order);
