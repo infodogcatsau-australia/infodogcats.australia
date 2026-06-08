@@ -1,8 +1,10 @@
 import { createClient } from '@supabase/supabase-js';
+import { createServerClient, parseCookieHeader, serializeCookieHeader } from '@supabase/ssr';
 
 const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
 
+// Client-side (browser)
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
@@ -10,9 +12,29 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   }
 });
 
+// Server-side (Astro pages) — lit les cookies de la request
+export function createSupabaseServerClient(request: Request, responseHeaders: Headers) {
+  return createServerClient(supabaseUrl, supabaseAnonKey, {
+    cookies: {
+      getAll() {
+        return parseCookieHeader(request.headers.get('Cookie') ?? '');
+      },
+      setAll(cookiesToSet) {
+        cookiesToSet.forEach(({ name, value, options }) => {
+          responseHeaders.append(
+            'Set-Cookie',
+            serializeCookieHeader(name, value, options)
+          );
+        });
+      },
+    },
+  });
+}
+
 export function getImageUrl(path: string, width = 800): string {
   if (!path) return '/placeholder-cat.jpg';
-  return `${supabaseUrl}/storage/v1/render/image/public/cat-images/${path}?width=${width}&quality=80&format=webp`;
+  if (path.startsWith('http')) return path;
+  return `${supabaseUrl}/storage/v1/object/public/cat-images/${path}`;
 }
 
 export function getThumbnailUrl(path: string): string {

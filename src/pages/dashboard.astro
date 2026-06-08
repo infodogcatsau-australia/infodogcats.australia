@@ -1,8 +1,10 @@
 ---
 export const prerender = false;
 import Layout from '../components/Layout.astro';
-import { supabase } from '../lib/supabase';
+import { createSupabaseServerClient } from '../lib/supabase';
 
+const responseHeaders = new Headers();
+const supabase = createSupabaseServerClient(Astro.request, responseHeaders);
 const { data: { session } } = await supabase.auth.getSession();
 if (!session) return Astro.redirect('/login?next=/dashboard', 302);
 
@@ -82,7 +84,6 @@ const pendingCats = cats?.filter((c: any) => !c.is_approved).length || 0;
             const isSold = cat.status === 'sold';
             return (
               <div class="bg-white rounded-2xl p-5 border border-sand/30 shadow-sm flex items-center gap-4 hover:shadow-md transition-shadow">
-                <!-- Status indicator -->
                 <div class={`w-2 h-12 rounded-full flex-shrink-0 ${isLive ? 'bg-green-400' : isPending ? 'bg-amber-400' : isSold ? 'bg-gray-400' : 'bg-red-400'}`}></div>
 
                 <div class="flex-1 min-w-0">
@@ -151,7 +152,6 @@ const pendingCats = cats?.filter((c: any) => !c.is_approved).length || 0;
         </div>
       )}
 
-      <!-- Tips -->
       {pendingCats > 0 && (
         <div class="mt-6 bg-amber-50 border border-amber-200 rounded-2xl p-5 flex gap-3">
           <span class="text-amber-500 text-xl flex-shrink-0">⏳</span>
@@ -173,13 +173,15 @@ const pendingCats = cats?.filter((c: any) => !c.is_approved).length || 0;
 
 <script>
   import { createClient } from '@supabase/supabase-js';
-  const sb = createClient(import.meta.env.PUBLIC_SUPABASE_URL, import.meta.env.PUBLIC_SUPABASE_ANON_KEY);
+  const sb = createClient(
+    (import.meta as any).env.PUBLIC_SUPABASE_URL,
+    (import.meta as any).env.PUBLIC_SUPABASE_ANON_KEY
+  );
 
   // Sign out
   document.getElementById('signout-btn')?.addEventListener('click', async () => {
-    const btn = document.getElementById('signout-btn');
-    btn.textContent = 'Signing out...';
-    btn.disabled = true;
+    const btn = document.getElementById('signout-btn') as HTMLButtonElement;
+    if (btn) { btn.textContent = 'Signing out...'; btn.disabled = true; }
     await sb.auth.signOut();
     window.location.href = '/';
   });
@@ -187,8 +189,9 @@ const pendingCats = cats?.filter((c: any) => !c.is_approved).length || 0;
   // Mark as sold
   document.querySelectorAll('.mark-sold-btn').forEach(btn => {
     btn.addEventListener('click', async (e) => {
-      const id = (e.target as HTMLElement).dataset.id;
-      const title = (e.target as HTMLElement).dataset.title;
+      const el = e.target as HTMLElement;
+      const id = el.dataset.id;
+      const title = el.dataset.title;
       if (!confirm(`Mark "${title}" as sold?`)) return;
       const { error } = await sb.from('cats').update({ status: 'sold' }).eq('id', id);
       if (!error) window.location.reload();
@@ -199,8 +202,9 @@ const pendingCats = cats?.filter((c: any) => !c.is_approved).length || 0;
   // Delete
   document.querySelectorAll('.delete-btn').forEach(btn => {
     btn.addEventListener('click', async (e) => {
-      const id = (e.target as HTMLElement).dataset.id;
-      const title = (e.target as HTMLElement).dataset.title;
+      const el = e.target as HTMLElement;
+      const id = el.dataset.id;
+      const title = el.dataset.title;
       if (!confirm(`Are you sure you want to delete "${title}"? This cannot be undone.`)) return;
       const { error } = await sb.from('cats').update({ status: 'deleted' }).eq('id', id);
       if (!error) window.location.reload();
