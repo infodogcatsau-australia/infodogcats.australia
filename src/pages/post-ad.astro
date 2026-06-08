@@ -48,8 +48,8 @@ if (Astro.request.method === 'POST') {
         // 3. حفظ الإعلان باستخدام Service Role (يتجاوز RLS بأمان)
         const adminSb = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE);
         const { data: cat, error: catErr } = await adminSb.from('cats').insert({
-          user_id: user.id,
-          ...adData
+          ...adData,
+          user_id: user.id  // يجب أن يكون بعد adData لتجاوز أي user_id مرسل من المتصفح
         }).select().single();
 
         if (catErr) {
