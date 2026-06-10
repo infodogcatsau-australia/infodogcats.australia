@@ -79,6 +79,27 @@ export const GET: APIRoute = async () => {
     lastmod: cat.updated_at || cat.created_at
   }));
 
+  // Individual service pages
+  const categorySlugMap: Record<string, string> = {
+    vet:      'vet',
+    groomer:  'groomer',
+    shelter:  'shelter',
+    breeder:  'breeder',
+    pet_shop: 'pet-shop',
+  };
+
+  const { data: services } = await supabase
+    .from('local_services')
+    .select('slug, city, category, created_at')
+    .eq('is_active', true);
+
+  const servicePages = (services || []).map((s: any) => ({
+    url: `/near-me/${s.city.toLowerCase()}/${categorySlugMap[s.category] ?? s.category}/${s.slug}`,
+    priority: '0.6',
+    changefreq: 'monthly',
+    lastmod: s.created_at,
+  }));
+
   // Combine all
   const allPages = [
     ...staticPages,
@@ -87,6 +108,7 @@ export const GET: APIRoute = async () => {
     ...nearMeCategoryPages,
     ...postPages,
     ...catPages,
+    ...servicePages,
   ];
 
   const today = new Date().toISOString().split('T')[0];

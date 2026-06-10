@@ -1,0 +1,734 @@
+---
+import { createSupabaseServerClient } from '../../../../lib/supabase';
+import Layout from '../../../../components/Layout.astro';
+import SEOMeta from '../../../../components/SEOMeta.astro';
+
+export const prerender = false;
+
+const { city, category, slug } = Astro.params;
+
+const supabase = createSupabaseServerClient(Astro.request, Astro.cookies);
+
+const { data: service, error } = await supabase
+  .from('local_services')
+  .select('*')
+  .eq('slug', slug)
+  .eq('is_active', true)
+  .single();
+
+if (error || !service) {
+  return Astro.redirect('/404');
+}
+
+const { data: nearby } = await supabase
+  .from('local_services')
+  .select('id, name, slug, address, rating, phone')
+  .eq('category', service.category)
+  .eq('city', service.city)
+  .eq('is_active', true)
+  .neq('slug', slug)
+  .limit(6);
+
+const categoryLabels: Record<string, { singular: string; plural: string; icon: string; nearme: string }> = {
+  vet:      { singular: 'Veterinary Clinic', plural: 'Vets',      icon: '🏥', nearme: 'Cat Vet Near Me' },
+  groomer:  { singular: 'Pet Groomer',       plural: 'Groomers',  icon: '✂️', nearme: 'Cat Groomer Near Me' },
+  shelter:  { singular: 'Animal Shelter',    plural: 'Shelters',  icon: '🏠', nearme: 'Cat Shelter Near Me' },
+  breeder:  { singular: 'Cat Breeder',       plural: 'Breeders',  icon: '🐱', nearme: 'Cat Breeder Near Me' },
+  pet_shop: { singular: 'Pet Shop',          plural: 'Pet Shops', icon: '🛒', nearme: 'Pet Shop Near Me' },
+};
+
+const cat = categoryLabels[service.category] ?? { singular: service.category, plural: service.category, icon: '📍', nearme: 'Service Near Me' };
+const cityFormatted = service.city.charAt(0).toUpperCase() + service.city.slice(1);
+const stateFormatted = service.state.toUpperCase();
+const categorySlug = service.category.replace('_', '-');
+
+function hashSlug(s: string): number {
+  let h = 0;
+  for (const c of s) h = (h * 31 + c.charCodeAt(0)) & 0xffff;
+  return h % 4;
+}
+const v = hashSlug(slug!);
+
+const paragraphSets: Record<string, string[][]> = {
+  vet: [
+    [
+      `${service.name} is a trusted veterinary clinic serving cat owners in ${cityFormatted}, ${stateFormatted}. If you're searching for a cat vet near you in ${cityFormatted}, this clinic offers comprehensive feline care including routine check-ups, vaccinations, diagnostics, and emergency consultations.`,
+      `Regular vet visits are one of the most important investments you can make in your cat's health. Cats are skilled at hiding illness, which means symptoms often go unnoticed until a condition becomes serious. The team at ${service.name} is trained to identify early warning signs and provide timely, effective treatment.`,
+      `Located in ${cityFormatted}, ${stateFormatted}, ${service.name} is well-positioned to serve cat owners across the local area. Whether you need a first vaccination for a new kitten, annual health maintenance for an adult cat, or specialist support for a senior pet, this clinic provides care at every life stage.`,
+      `Finding a reliable vet near you in ${cityFormatted} means having access to trusted advice when you need it most. ${service.name} prioritises clear communication with pet owners, ensuring you always understand your cat's diagnosis, treatment plan, and what to expect during recovery.`,
+      `If you're looking for a cat vet near ${cityFormatted} or across ${stateFormatted}, ${service.name} is a local option worth contacting. Reach out by phone to discuss your cat's needs, ask about available appointment times, and find out how this clinic can support your cat's long-term health and wellbeing.`,
+    ],
+    [
+      `For cat owners in ${cityFormatted} searching for a vet near them, ${service.name} offers a full range of feline veterinary services in a professional and caring environment. From preventive care to more complex treatments, their team is experienced in managing the health needs of cats of all ages and breeds.`,
+      `Cats require specialised veterinary attention that accounts for their unique physiology and behaviour. ${service.name} in ${cityFormatted}, ${stateFormatted} provides feline-focused care designed to reduce stress for your cat and deliver accurate, effective outcomes for a wide range of health concerns.`,
+      `Whether your cat needs a microchip, desexing procedure, parasite prevention treatment, or nutritional guidance, ${service.name} can help. Their ${cityFormatted}-based team stays up to date with best practices in feline medicine to ensure your cat receives quality care every visit.`,
+      `Pet owners across ${cityFormatted} and surrounding suburbs of ${stateFormatted} choose ${service.name} for its approachable staff and thorough clinical approach. Building a long-term relationship with a trusted local vet means your cat's health history is well understood, which leads to better outcomes over time.`,
+      `To find a cat vet near you in ${cityFormatted}, ${service.name} is a practical and reliable choice. Contact their team directly to book an appointment, discuss any health concerns, or ask about the range of services they offer to keep your cat healthy year-round.`,
+    ],
+    [
+      `${service.name} stands out as a dedicated veterinary clinic in ${cityFormatted}, ${stateFormatted}, offering attentive care to cats and peace of mind to their owners. If you're searching for a cat vet near you, this clinic is equipped to handle everything from routine wellness checks to complex medical cases.`,
+      `Preventive veterinary care is the foundation of a long, healthy life for your cat. At ${service.name} in ${cityFormatted}, the team provides annual health assessments, vaccination schedules, dental check-ups, and parasite prevention programmes tailored to your cat's individual needs and lifestyle.`,
+      `When health problems arise, having access to a trusted vet near you in ${cityFormatted} makes all the difference. ${service.name} offers prompt consultations, clear diagnoses, and treatment plans that are explained in plain language so you can make informed decisions about your cat's care.`,
+      `Cats of all ages and breeds are welcome at ${service.name}. Whether you've just brought home a kitten, are managing a middle-aged cat's ongoing health, or are supporting an elderly cat through its senior years, the team in ${cityFormatted} has the expertise to guide you every step of the way.`,
+      `For residents of ${cityFormatted} and nearby areas of ${stateFormatted} looking for a reliable cat vet near them, ${service.name} is a local clinic that combines professional expertise with genuine care for feline patients. Get in touch to book your cat's next appointment and experience their standard of service firsthand.`,
+    ],
+    [
+      `${service.name} provides essential veterinary services for cat owners in ${cityFormatted}, ${stateFormatted}. For those searching for a cat vet near them, this clinic offers a comprehensive range of treatments including health assessments, surgical procedures, dental care, and emergency support.`,
+      `Good feline health care begins with choosing the right vet. ${service.name} in ${cityFormatted} is committed to providing evidence-based care that addresses the physical, dental, and nutritional needs of cats at every life stage — from the first kitten vaccination through to senior wellness management.`,
+      `The clinic's location in ${cityFormatted} makes it accessible to cat owners throughout the local area and surrounding suburbs. Whether you're a new cat owner or an experienced feline enthusiast, the team at ${service.name} will take the time to understand your cat's unique history and health requirements.`,
+      `Searching for a trusted vet near you in ${cityFormatted} can feel overwhelming with so many options. ${service.name} simplifies that decision by offering a transparent, caring approach to veterinary medicine that puts your cat's wellbeing at the centre of every consultation.`,
+      `If you need a cat vet near ${cityFormatted} or anywhere across ${stateFormatted}, ${service.name} is a clinic worth contacting. Their team is available to answer questions, schedule appointments, and provide the professional veterinary support your cat deserves.`,
+    ],
+  ],
+  groomer: [
+    [
+      `${service.name} is a professional cat grooming service in ${cityFormatted}, ${stateFormatted}. For cat owners looking for a groomer near them, this salon offers expert grooming tailored to feline temperament and coat type, ensuring your cat leaves looking and feeling their best.`,
+      `Professional grooming does more than keep your cat clean — it supports skin health, reduces shedding, prevents painful matting, and allows groomers to identify potential health issues such as lumps, skin irritations, or parasites early. The team at ${service.name} brings this holistic approach to every appointment.`,
+      `Cats can find grooming stressful, which is why the approach at ${service.name} in ${cityFormatted} is designed around feline comfort. Their experienced groomers work patiently and gently, using techniques and products specifically suited to cats to keep the process as calm as possible.`,
+      `Whether your cat needs a full groom including bath, blow-dry, trim, nail clip, and ear clean, or simply a tidy-up between sessions, ${service.name} in ${cityFormatted}, ${stateFormatted} offers flexible services to suit your cat's specific needs and grooming schedule.`,
+      `For cat owners in ${cityFormatted} searching for a cat groomer near them, ${service.name} is a local provider with the skill and patience to care for cats of all breeds and temperaments. Contact their team to find out about booking options and to discuss what your cat needs for their next grooming session.`,
+    ],
+    [
+      `If you're looking for a cat groomer near you in ${cityFormatted}, ${service.name} offers professional grooming services designed specifically around feline behaviour. Their experienced team understands how to handle cats safely and effectively, making each session as stress-free as possible.`,
+      `Regular professional grooming is particularly important for long-haired breeds prone to matting, but all cats benefit from routine coat maintenance, nail trimming, and ear cleaning. ${service.name} in ${cityFormatted}, ${stateFormatted} provides these services with the care and expertise your cat deserves.`,
+      `The difference between a good and great cat groomer lies in understanding feline behaviour. ${service.name} in ${cityFormatted} takes the time to work at each cat's pace, building trust through gentle handling and a calm grooming environment that reduces anxiety and delivers better results.`,
+      `Grooming frequency depends on your cat's breed, age, and coat condition. ${service.name} can advise on the ideal schedule for your cat during their first appointment, whether that's every few weeks for a Persian or less frequently for a short-haired domestic breed.`,
+      `For a reliable cat groomer near you in ${cityFormatted} and surrounding areas of ${stateFormatted}, ${service.name} offers the professional service your cat needs. Reach out to their team to make a booking, ask about available services, and find out how they can help keep your cat's coat in excellent condition.`,
+    ],
+    [
+      `${service.name} brings skilled, cat-focused grooming to owners in ${cityFormatted}, ${stateFormatted}. For those searching for a cat groomer near them, this salon provides a welcoming space where cats are handled with patience and expertise from start to finish.`,
+      `Cat grooming goes well beyond aesthetics. Regular sessions with a professional groomer like ${service.name} help maintain your cat's coat health, reduce the risk of hairballs, keep nails at a safe length, and ensure ears remain clean and free of debris or infection.`,
+      `${service.name} in ${cityFormatted} offers a range of grooming services including full grooms, bath and brush packages, nail trimming, and sanitary clips. Their team can tailor a grooming plan to your cat's specific breed requirements, coat length, and individual temperament.`,
+      `Many cat owners in ${cityFormatted} find that regular professional grooming, combined with home brushing between sessions, significantly improves their cat's coat condition and reduces shedding around the house. ${service.name} can provide guidance on the best home maintenance routine for your cat's coat type.`,
+      `If you're searching for a cat groomer near you in ${cityFormatted} or nearby areas of ${stateFormatted}, ${service.name} is a trusted local option. Contact them to discuss your cat's grooming needs, ask about appointment availability, and book your cat in for their next professional session.`,
+    ],
+    [
+      `${service.name} is a dedicated cat grooming salon in ${cityFormatted}, ${stateFormatted}, offering professional services for cat owners who want the best for their pets. Searching for a cat groomer near you in ${cityFormatted}? This local salon provides expert care in a feline-friendly environment.`,
+      `Not all grooming salons are equipped to handle cats effectively. ${service.name} in ${cityFormatted} specialises in feline grooming, with staff trained to manage cats of varying temperaments, coat types, and grooming histories — including cats who find the experience particularly stressful.`,
+      `From basic nail trims and brush-outs to full grooming packages, ${service.name} offers flexible options to meet the needs of every cat owner in ${cityFormatted}, ${stateFormatted}. Their pricing and service packages can be discussed directly when you make contact.`,
+      `Choosing a groomer who genuinely understands cats makes a noticeable difference to the outcome of each session. ${service.name} in ${cityFormatted} prioritises low-stress handling, uses cat-appropriate products, and works at a pace that keeps your cat as comfortable as possible throughout the appointment.`,
+      `For cat owners across ${cityFormatted} and surrounding ${stateFormatted} suburbs looking for a reliable cat groomer near them, ${service.name} is worth contacting. Get in touch to discuss your cat's needs and to find an appointment time that works for you.`,
+    ],
+  ],
+  shelter: [
+    [
+      `${service.name} is an animal shelter in ${cityFormatted}, ${stateFormatted}, dedicated to the care and rehoming of cats in need. If you're searching for a cat shelter near you in ${cityFormatted}, this organisation provides adoption services, fostering opportunities, and community support for cat welfare.`,
+      `Adopting from a shelter is one of the most rewarding decisions a cat lover can make. ${service.name} in ${cityFormatted} carefully prepares each cat for adoption, ensuring they are health-checked, vaccinated, desexed, and microchipped before going to their new home.`,
+      `Beyond adoption, ${service.name} plays a vital role in the ${cityFormatted} community by providing a safe haven for cats who have been lost, surrendered, or rescued from difficult situations. Their team of staff and volunteers works tirelessly to ensure every cat receives the care and attention it needs.`,
+      `If you're not ready to adopt but still want to support the animals at ${service.name}, fostering is a meaningful way to contribute. Foster carers provide temporary home environments for cats who need additional socialisation or recovery time before they're ready for permanent placement.`,
+      `For anyone in ${cityFormatted} or nearby areas of ${stateFormatted} searching for a cat shelter near them, ${service.name} is a trusted local organisation. Contact their team to enquire about cats available for adoption, fostering opportunities, or how else you can support their important work.`,
+    ],
+    [
+      `${service.name} in ${cityFormatted}, ${stateFormatted} provides essential care and rehoming services for cats across the region. For those searching for a cat shelter near them in ${cityFormatted}, this organisation offers a pathway to adoption and a range of ways to support feline welfare locally.`,
+      `Every cat at ${service.name} has a story. Whether surrendered by owners who could no longer care for them, rescued from the streets, or transferred from overcrowded facilities, each animal receives individual attention, veterinary care, and the socialisation needed to thrive in a new home.`,
+      `The adoption process at ${service.name} is designed to create the best possible outcomes for both cats and their new families. Their team takes time to understand your lifestyle and home environment before matching you with a cat whose temperament and needs are a good fit.`,
+      `Shelters like ${service.name} depend heavily on community involvement. Whether through adoption, fostering, volunteering, or donating supplies and funds, there are many ways that residents of ${cityFormatted} and ${stateFormatted} can support the organisation's mission.`,
+      `If you're looking for a cat shelter near you in ${cityFormatted}, ${service.name} is a reputable local option. Reach out to find out which cats are currently available, how the adoption process works, and how you can play a part in giving a cat in ${cityFormatted} a better future.`,
+    ],
+    [
+      `Located in ${cityFormatted}, ${stateFormatted}, ${service.name} is a dedicated animal shelter focused on the welfare, rehabilitation, and rehoming of cats. For local residents searching for a cat shelter near them, this organisation provides a vital service that benefits both animals and the wider community.`,
+      `Cats at ${service.name} come from a variety of backgrounds — some have been surrendered by owners facing difficult circumstances, while others have been rescued from unsafe environments or brought in as strays. Each cat receives a thorough health assessment, any necessary treatment, and dedicated care before being made available for adoption.`,
+      `Adopting a cat from ${service.name} in ${cityFormatted} means giving an animal a genuine second chance. The shelter's team will guide you through each step of the process, from browsing available cats and completing an application to the final adoption and settling-in period.`,
+      `For those who can't commit to adoption, ${service.name} offers fostering as a flexible alternative. Foster carers in ${cityFormatted} and across ${stateFormatted} play a critical role in freeing up shelter space and helping cats develop the confidence and social skills they need for successful long-term placement.`,
+      `To find a cat shelter near you in ${cityFormatted}, ${service.name} is a trusted local resource. Contact them to learn about available cats, upcoming adoption events, and how the ${cityFormatted} community can support feline welfare in your area.`,
+    ],
+    [
+      `${service.name} is one of ${cityFormatted}'s established cat shelters, providing care, rehabilitation, and rehoming services for cats across ${stateFormatted}. Whether you're looking to adopt, foster, or support feline welfare in ${cityFormatted}, this organisation is a valuable local resource.`,
+      `The team at ${service.name} is committed to responsible rehoming — ensuring every cat leaves the shelter vaccinated, desexed, microchipped, and matched with a home suited to their personality and needs. This careful process gives both cats and adopters the best chance of a successful, lasting bond.`,
+      `Cats of all ages find their way to ${service.name}, from young kittens requiring early socialisation to older cats who have known a home before and simply need a new one. The shelter team can help you find the right match based on your living situation, experience, and the kind of companion you're looking for.`,
+      `Community support is essential to what ${service.name} does. Residents of ${cityFormatted} and surrounding areas of ${stateFormatted} can contribute through adoption, fostering, volunteering at the shelter, donating supplies, or making a financial contribution to help fund veterinary care.`,
+      `If you're searching for a cat shelter near you in ${cityFormatted}, ${service.name} is a well-regarded local organisation that welcomes enquiries. Get in touch to find out about cats currently in their care, adoption requirements, and how to take the first step toward giving a cat a home.`,
+    ],
+  ],
+  breeder: [
+    [
+      `${service.name} is a cat breeder based in ${cityFormatted}, ${stateFormatted}, offering well-raised kittens to carefully selected homes. For those searching for a cat breeder near them in ${cityFormatted}, this breeder combines genuine passion for felines with responsible breeding practices.`,
+      `Responsible cat breeding begins long before kittens are born. ${service.name} in ${cityFormatted} follows established health testing protocols for their breeding cats, ensuring genetic conditions common to their chosen breeds are screened for and minimised. This gives every kitten the best possible start.`,
+      `Kittens at ${service.name} are raised in a home environment from birth, receiving daily handling, early socialisation, and the kind of human interaction that prepares them for confident, sociable lives with their new families. By the time they're ready to leave, they are comfortable with being held, groomed, and handled.`,
+      `${service.name} in ${cityFormatted}, ${stateFormatted} provides ongoing support to new kitten owners after the sale. Whether you have questions about diet, litter training, vet care, or breed-specific behaviour, an ethical breeder remains a resource for the lifetime of your cat.`,
+      `For cat lovers in ${cityFormatted} looking for a reputable cat breeder near them, ${service.name} is a local option worth investigating. Contact them to ask about available breeds, upcoming litters, the reservation process, and what's included when you purchase a kitten from their programme.`,
+    ],
+    [
+      `${service.name} breeds cats in ${cityFormatted}, ${stateFormatted} with a focus on health, temperament, and breed integrity. If you're looking for a cat breeder near you in ${cityFormatted}, this breeder offers a transparent and ethical approach to producing well-adjusted kittens for approved homes.`,
+      `The quality of a kitten's early environment has a lasting impact on their personality and behaviour. At ${service.name} in ${cityFormatted}, kittens are socialised from the earliest weeks of life — exposed to household sounds, different people, and gentle handling to build the confidence they need for family life.`,
+      `${service.name} health-tests their breeding cats and vaccinates kittens before sale, providing documentation for each kitten's veterinary history. Transparent health records are a hallmark of responsible breeding and give new owners confidence in the animal they're bringing home.`,
+      `Whether you're seeking a companion cat, a show-quality animal, or a specific breed to suit your household's lifestyle, ${service.name} in ${cityFormatted} can discuss what's available and guide you toward the right kitten. They're also happy to add you to a waiting list for upcoming litters if current availability doesn't match your requirements.`,
+      `For anyone in ${cityFormatted} or across ${stateFormatted} searching for a cat breeder near them, ${service.name} offers the combination of ethical practice, genuine care, and expert knowledge you should look for. Reach out today to begin the conversation and find out more about their current and upcoming kittens.`,
+    ],
+    [
+      `Based in ${cityFormatted}, ${stateFormatted}, ${service.name} is a dedicated cat breeder committed to producing healthy, well-socialised kittens for loving homes. For prospective cat owners searching for a breeder near them in ${cityFormatted}, this is a local operation that places animal welfare at the centre of everything they do.`,
+      `Ethical cat breeding requires significant investment of time, knowledge, and resources. ${service.name} in ${cityFormatted} demonstrates this commitment through rigorous health testing of breeding cats, careful pair selection, quality nutrition and veterinary care for all animals, and thorough socialisation of every litter.`,
+      `New kitten owners can expect full transparency from ${service.name} — including health certificates, vaccination records, microchip information, and guidance on care, diet, and any breed-specific considerations. This documentation and support helps ensure a smooth transition for both kitten and owner.`,
+      `Visiting ${service.name} in ${cityFormatted} before committing to a kitten is encouraged. Meeting the kittens and their parents in person gives you a genuine sense of their temperament, the environment they've been raised in, and the care standards the breeder upholds.`,
+      `If you're searching for a reputable cat breeder near you in ${cityFormatted} or anywhere in ${stateFormatted}, ${service.name} is worth contacting. Get in touch to discuss available breeds, current litters, and what to expect from the purchase process at this ${cityFormatted}-based cattery.`,
+    ],
+    [
+      `${service.name} in ${cityFormatted}, ${stateFormatted} is a reputable cat breeder producing kittens bred for health, temperament, and breed standards. Cat lovers searching for a breeder near them in ${cityFormatted} will find a dedicated, knowledgeable operation committed to the highest standards of feline care.`,
+      `Every kitten from ${service.name} is raised with attention to socialisation, health, and early development. From birth through to the day they leave for their new home, kittens receive appropriate nutrition, veterinary care, human interaction, and the enrichment they need to develop into well-rounded companions.`,
+      `${service.name} is transparent about their breeding programme, health testing practices, and what's included with each kitten. Prospective owners in ${cityFormatted} and across ${stateFormatted} are encouraged to ask questions, request documentation, and arrange a visit before placing a reservation.`,
+      `Breed-specific knowledge is one of the key advantages of working with a specialist breeder like ${service.name}. Whether you're interested in a particular coat type, temperament profile, or activity level, their experience with their chosen breeds means they can help you make an informed decision.`,
+      `To connect with a trusted cat breeder near you in ${cityFormatted}, ${service.name} is a local option that prioritises quality and ethical practice. Contact them today to find out about available kittens, upcoming litters, and the reservation process for their ${cityFormatted}-based breeding programme.`,
+    ],
+  ],
+  pet_shop: [
+    [
+      `${service.name} is a local pet shop in ${cityFormatted}, ${stateFormatted}, stocking a wide range of products for cat owners. If you're searching for a pet shop near you in ${cityFormatted}, this store provides everything from daily essentials to specialty items for cats of all ages and breeds.`,
+      `Shopping at a local pet shop like ${service.name} gives you access to knowledgeable staff who can provide personalised product recommendations based on your cat's specific age, health status, breed, and dietary needs — something that larger chain stores and online retailers rarely offer.`,
+      `${service.name} in ${cityFormatted} stocks a carefully selected range of cat food brands, including premium and veterinary diet options, as well as litter, bedding, enrichment toys, grooming products, health supplements, and cat care accessories to cover all aspects of feline ownership.`,
+      `Enrichment and mental stimulation are increasingly recognised as essential components of cat health, particularly for indoor cats. ${service.name} in ${cityFormatted}, ${stateFormatted} carries a range of interactive toys, puzzle feeders, scratching posts, and other enrichment products to keep your cat active and engaged.`,
+      `For cat owners in ${cityFormatted} looking for a reliable pet shop near them, ${service.name} is a trusted local destination. Visit them in store or contact their team to check current stock, ask for product recommendations, and find out about any current promotions on cat food or accessories.`,
+    ],
+    [
+      `${service.name} serves the cat-owning community in ${cityFormatted}, ${stateFormatted}, with a comprehensive range of pet products and expert in-store advice. For those searching for a pet shop near them in ${cityFormatted}, this store offers the kind of personalised service that makes shopping for your cat genuinely easier.`,
+      `Nutrition is one of the most important factors in a cat's long-term health. The team at ${service.name} in ${cityFormatted} can help you navigate the wide range of available cat food options — from dry and wet complete diets to raw feeding and breed-specific formulas — to find the best fit for your cat.`,
+      `In addition to food, ${service.name} stocks a wide selection of cat accessories including carriers, beds, litter trays, grooming tools, health supplements, and parasite prevention products. Having a reliable local pet shop in ${cityFormatted} means you can restock essentials without the delay of online ordering.`,
+      `The staff at ${service.name} in ${cityFormatted}, ${stateFormatted} are passionate about animal welfare and stay up to date with developments in pet nutrition and care. Whether you're a first-time cat owner or an experienced breeder, you'll find their product knowledge and willingness to help genuinely useful.`,
+      `For cat owners across ${cityFormatted} and nearby areas of ${stateFormatted} in search of a pet shop near them, ${service.name} is a dependable local option. Drop in to browse their range in person or contact them to check availability on specific products before making the trip.`,
+    ],
+    [
+      `${service.name} in ${cityFormatted}, ${stateFormatted} is a well-stocked pet shop catering to the needs of local cat owners. For anyone searching for a pet shop near them in ${cityFormatted}, this store provides a convenient and knowledgeable local alternative to large chain retailers.`,
+      `From kitten starter kits to senior cat health supplements, ${service.name} stocks products suited to cats at every stage of life. Their team in ${cityFormatted} can advise on age-appropriate nutrition, suitable enrichment products, and the best grooming tools for your cat's coat type.`,
+      `${service.name} understands that choosing the right products for your cat can be confusing given the sheer volume of options available. Their in-store staff provide honest, experience-based guidance to help you make informed purchasing decisions that genuinely benefit your cat's health and quality of life.`,
+      `For cat owners managing specific health conditions, dietary requirements, or breed-related needs, ${service.name} in ${cityFormatted}, ${stateFormatted} offers targeted product advice and, in many cases, stocks veterinary and prescription diet products not widely available elsewhere locally.`,
+      `If you're looking for a pet shop near you in ${cityFormatted} that offers genuine expertise alongside a quality product range, ${service.name} is worth a visit. Contact their team to enquire about stock, get advice for your specific cat, or find out about any loyalty programmes or current promotions.`,
+    ],
+    [
+      `${service.name} is a trusted pet shop in ${cityFormatted}, ${stateFormatted}, offering cat owners a convenient local source for quality food, accessories, health products, and expert advice. For those searching for a pet shop near them in ${cityFormatted}, this store combines product variety with genuine customer care.`,
+      `Buying cat supplies from a knowledgeable local retailer like ${service.name} has clear advantages over online shopping — you can get immediate answers to product questions, physically assess items like beds and carriers before buying, and build a relationship with staff who come to know your cat's needs over time.`,
+      `${service.name} in ${cityFormatted} stocks a broad selection of cat food brands across all price points, from budget-friendly everyday options to premium and grain-free formulas for cats with specific dietary requirements. Their team can help you find the right balance of quality and value for your cat.`,
+      `Regular visits to a local pet shop like ${service.name} in ${cityFormatted}, ${stateFormatted} allow you to stay on top of your cat's changing needs as they age. From kitten-stage nutrition through to senior joint support supplements, having a trusted local store means expert advice is always close at hand.`,
+      `For cat owners in ${cityFormatted} and the wider ${stateFormatted} region searching for a pet shop near them, ${service.name} offers the product range, staff knowledge, and local convenience that matter most. Visit their store or get in touch to discuss what they can offer for your cat's specific needs.`,
+    ],
+  ],
+};
+
+const paragraphs = (paragraphSets[service.category] ?? paragraphSets['vet'])[v];
+
+const faqSets: Record<string, { q: string; a: string }[][]> = {
+  vet: [
+    [
+      { q: `Where is ${service.name} located?`, a: `${service.name} is located at ${service.address ?? cityFormatted + ', ' + stateFormatted}. Use the Google Maps link on this page to get directions from your location.` },
+      { q: `How do I book an appointment at ${service.name}?`, a: `Call ${service.name} directly${service.phone ? ' on ' + service.phone : ''} to book an appointment. It's recommended to call ahead for routine visits and immediately for urgent or emergency situations.` },
+      { q: `Does ${service.name} treat cats specifically?`, a: `${service.name} provides veterinary services for cats in ${cityFormatted}. Contact them to confirm which species they treat and whether they have vets with specific feline experience on their team.` },
+      { q: `What should I bring to my cat's first vet visit at ${service.name}?`, a: `Bring any previous health records, vaccination certificates, and a note of any symptoms or concerns. Transport your cat in a secure carrier. The team at ${service.name} can advise on anything else needed for your specific visit.` },
+      { q: `Are there other cat vets near ${service.name} in ${cityFormatted}?`, a: `Yes — browse our InfoDogCats Near Me directory to find other cat vets in ${cityFormatted} and compare options close to you.` },
+    ],
+    [
+      { q: `What are the opening hours of ${service.name}?`, a: `Contact ${service.name}${service.phone ? ' on ' + service.phone : ''} or visit their website to confirm current opening hours and whether after-hours or emergency services are available.` },
+      { q: `Is ${service.name} accepting new cat patients in ${cityFormatted}?`, a: `Call ${service.name} directly to find out if they're currently accepting new patients. Popular clinics in ${cityFormatted} can have waitlists, so it's worth enquiring early.` },
+      { q: `Does ${service.name} offer emergency vet care?`, a: `Emergency service availability varies. Contact ${service.name} to find out if they offer after-hours care for cats in ${cityFormatted}, or who they recommend for emergencies.` },
+      { q: `How much does a consultation at ${service.name} cost?`, a: `Consultation fees vary depending on the type of visit and treatments involved. Contact ${service.name} for a fee guide before your first appointment.` },
+      { q: `What vaccinations does my cat need according to vets in ${cityFormatted}?`, a: `Core vaccinations for cats typically cover feline herpesvirus, calicivirus, and panleukopenia. The team at ${service.name} can advise on the right schedule for your cat based on age, lifestyle, and health history.` },
+    ],
+    [
+      { q: `Does ${service.name} offer desexing for cats?`, a: `Desexing is a standard service at most vet clinics. Contact ${service.name} in ${cityFormatted} to confirm availability, recommended age, and current pricing for this procedure.` },
+      { q: `How often should my cat visit a vet in ${cityFormatted}?`, a: `Most vets recommend annual check-ups for adult cats and more frequent visits for kittens and seniors. ${service.name} can advise on the right schedule for your cat's age and health status.` },
+      { q: `Does ${service.name} offer microchipping in ${cityFormatted}?`, a: `Microchipping is a routine service at most vet clinics. Contact ${service.name} to confirm availability and current pricing for cat microchipping.` },
+      { q: `Can ${service.name} help with cat dental care?`, a: `Dental health is an important part of feline wellness. Ask ${service.name} about dental check-ups and professional cleaning services for cats in ${cityFormatted}.` },
+      { q: `How do I prepare my cat for a vet visit?`, a: `Use a secure carrier, limit food before visits if sedation may be needed, and bring health records. ${service.name}'s team can offer specific preparation advice based on the reason for your visit.` },
+    ],
+    [
+      { q: `Can I get a second opinion at ${service.name}?`, a: `Seeking a second opinion is entirely reasonable when it comes to your cat's health. Contact ${service.name} in ${cityFormatted} to book a consultation to discuss your cat's situation.` },
+      { q: `Does ${service.name} offer parasite prevention for cats?`, a: `Flea, tick, and worm prevention are standard parts of feline care. Ask ${service.name} about the parasite prevention products and schedules they recommend for cats in ${cityFormatted}, ${stateFormatted}.` },
+      { q: `Can ${service.name} help with cat nutrition advice?`, a: `Many vets offer nutritional guidance as part of a wellness consultation. Ask ${service.name} about dietary recommendations specific to your cat's age, breed, and health condition.` },
+      { q: `What should I do if my cat is sick after hours?`, a: `Contact ${service.name} to find out if they offer after-hours care or can recommend an emergency vet clinic in ${cityFormatted} for out-of-hours situations.` },
+      { q: `Is ${service.name} the closest cat vet to me in ${cityFormatted}?`, a: `Use our InfoDogCats Near Me directory to compare all cat vets in ${cityFormatted} and find the one most convenient to your location.` },
+    ],
+  ],
+  groomer: [
+    [
+      { q: `Where is ${service.name} located?`, a: `${service.name} is based at ${service.address ?? cityFormatted + ', ' + stateFormatted}. Use the Google Maps link on this page for directions.` },
+      { q: `Does ${service.name} groom cats in ${cityFormatted}?`, a: `Yes — ${service.name} provides professional grooming services for cats in ${cityFormatted}. Contact them to confirm available services and book an appointment.` },
+      { q: `How often should I get my cat professionally groomed?`, a: `Frequency depends on your cat's breed and coat type. Long-haired cats may need grooming every 6-8 weeks; short-haired cats less frequently. ${service.name} can advise during your first appointment.` },
+      { q: `What grooming services does ${service.name} offer?`, a: `Services typically include bathing, coat trimming, nail clipping, ear cleaning, and blow-drying. Contact ${service.name} directly to confirm their full service list and pricing.` },
+      { q: `Is there a cat groomer near me in ${cityFormatted}?`, a: `Yes — ${service.name} is a local cat groomer in ${cityFormatted}. Browse our InfoDogCats Near Me directory to see all groomers in your area.` },
+    ],
+    [
+      { q: `Is ${service.name} experienced with nervous cats?`, a: `Experienced groomers know how to handle anxious cats. Contact ${service.name} in ${cityFormatted} to discuss your cat's temperament and how they accommodate cats that find grooming stressful.` },
+      { q: `How long does a grooming session take at ${service.name}?`, a: `Session length depends on the services and your cat's coat condition. Contact ${service.name} for an estimate based on your cat's specific grooming needs.` },
+      { q: `Do I need to book in advance at ${service.name}?`, a: `Booking ahead is always recommended. Contact ${service.name} in ${cityFormatted} to check availability and secure your preferred appointment time.` },
+      { q: `Does ${service.name} use cat-safe products?`, a: `Reputable groomers use products specifically formulated for cats. When contacting ${service.name}, ask about the products used if your cat has any known skin sensitivities.` },
+      { q: `Can ${service.name} deal with severely matted cat fur?`, a: `Severe matting requires professional attention. Contact ${service.name} to discuss your cat's coat condition and the best approach for safely removing or managing the matting.` },
+    ],
+    [
+      { q: `How much does cat grooming cost at ${service.name}?`, a: `Grooming prices vary by service and coat type. Contact ${service.name} directly for a quote tailored to your cat's specific needs.` },
+      { q: `Can I stay with my cat during grooming at ${service.name}?`, a: `Policies on owner presence vary. Contact ${service.name} in ${cityFormatted} to ask about their approach and whether you're welcome during the appointment.` },
+      { q: `Does ${service.name} offer mobile cat grooming in ${cityFormatted}?`, a: `Some groomers offer mobile or home-visit services. Contact ${service.name} to find out if mobile grooming is available in your area of ${cityFormatted}.` },
+      { q: `Is professional grooming necessary for short-haired cats?`, a: `While less critical than for long-haired breeds, professional grooming for nail trims, ear cleaning, and coat checks is still beneficial for short-haired cats. Ask ${service.name} what they'd recommend for your cat.` },
+      { q: `Where can I find other cat groomers near me in ${cityFormatted}?`, a: `Browse our InfoDogCats Near Me directory for a full list of cat groomers in ${cityFormatted} and compare options close to your location.` },
+    ],
+    [
+      { q: `Where is ${service.name} located?`, a: `${service.name} is at ${service.address ?? cityFormatted + ', ' + stateFormatted}. Get directions using the Google Maps link on this page.` },
+      { q: `What should I do before my cat's grooming appointment at ${service.name}?`, a: `Avoid a large meal right before the appointment and, if your cat is anxious, discuss calming strategies with ${service.name} beforehand. Bringing a familiar item from home can also help.` },
+      { q: `Does ${service.name} groom kittens?`, a: `Many groomers offer services for kittens as an introduction to the grooming process. Contact ${service.name} to ask about their approach to first-time kitten grooming appointments.` },
+      { q: `How do I find the best cat groomer near me in ${cityFormatted}?`, a: `Look for groomers with cat-specific experience, positive reviews, and a calm handling approach. ${service.name} in ${cityFormatted} is a local option worth contacting to assess whether they're the right fit for your cat.` },
+      { q: `Does grooming help with cat shedding?`, a: `Yes — regular professional grooming at ${service.name} can significantly reduce shedding by removing loose coat and preventing matting, which contributes to a cleaner home environment.` },
+    ],
+  ],
+  shelter: [
+    [
+      { q: `Where is ${service.name} located?`, a: `${service.name} is located at ${service.address ?? cityFormatted + ', ' + stateFormatted}. Use the Google Maps link on this page to get directions.` },
+      { q: `How do I adopt a cat from ${service.name} in ${cityFormatted}?`, a: `Contact ${service.name}${service.phone ? ' on ' + service.phone : ''} to enquire about available cats and the adoption process. Most shelters require an application and home assessment.` },
+      { q: `Does ${service.name} have kittens available in ${cityFormatted}?`, a: `Availability changes regularly. Get in touch with ${service.name} to find out which cats and kittens are currently looking for homes.` },
+      { q: `What does it cost to adopt from ${service.name}?`, a: `Adoption fees vary and typically cover desexing, microchipping, and vaccinations. Contact ${service.name} directly for current fee information.` },
+      { q: `Are there other cat shelters near me in ${cityFormatted}?`, a: `Browse our InfoDogCats Near Me directory to find other animal shelters and rescue organisations in ${cityFormatted} and surrounding areas.` },
+    ],
+    [
+      { q: `Can I surrender a cat to ${service.name} in ${cityFormatted}?`, a: `Many shelters accept surrendered animals subject to capacity. Contact ${service.name} to discuss your situation and their intake process.` },
+      { q: `Does ${service.name} have a foster care programme?`, a: `Fostering is a great way to support cats without a permanent commitment. Contact ${service.name} to find out if they have a foster programme and how to apply.` },
+      { q: `Are cats at ${service.name} vaccinated and desexed before adoption?`, a: `Most reputable shelters ensure cats are vaccinated, desexed, and microchipped before adoption. Confirm specifics with ${service.name} when you enquire about a particular animal.` },
+      { q: `Can I visit ${service.name} to meet available cats?`, a: `Contact ${service.name} to arrange a visit and meet the cats currently in their care. Meeting in person is the best way to find the right match.` },
+      { q: `How can I support ${service.name} without adopting?`, a: `You can support ${service.name} by volunteering, fostering, donating supplies, or making a financial contribution. Contact their team to find out how to get involved.` },
+    ],
+    [
+      { q: `Does ${service.name} rehome older cats in ${cityFormatted}?`, a: `Most shelters care for cats of all ages. Contact ${service.name} to find out about senior cats in their care and whether an older cat might suit your home.` },
+      { q: `What happens if the adoption doesn't work out after leaving ${service.name}?`, a: `Most reputable shelters have a return policy and will support you if an adoption placement doesn't go as planned. Ask about this policy when you apply.` },
+      { q: `Does ${service.name} run adoption events in ${cityFormatted}?`, a: `Some shelters hold regular adoption events. Contact ${service.name} or follow their updates to find out about upcoming opportunities in ${cityFormatted}.` },
+      { q: `How long does the adoption process take at ${service.name}?`, a: `Timelines vary depending on the shelter's process and the specific cat. Contact ${service.name} to understand what steps are involved and how long you can expect the process to take.` },
+      { q: `Where can I find a cat shelter near me in ${cityFormatted}?`, a: `Browse our InfoDogCats Near Me directory for a full list of cat shelters and rescue organisations in ${cityFormatted} and the wider ${stateFormatted} region.` },
+    ],
+    [
+      { q: `Where is ${service.name} located?`, a: `${service.name} is at ${service.address ?? cityFormatted + ', ' + stateFormatted}. Get directions using the Google Maps link on this page.` },
+      { q: `Can I donate supplies to ${service.name}?`, a: `Shelters regularly need supplies including food, bedding, and enrichment items. Contact ${service.name} to find out what's most needed and how to arrange a donation.` },
+      { q: `Does ${service.name} rescue stray cats in ${cityFormatted}?`, a: `Contact ${service.name} if you've found a stray cat in ${cityFormatted}. They can advise on the best next steps and whether they have capacity to assist.` },
+      { q: `How does ${service.name} match cats with adopters?`, a: `Most shelters assess your lifestyle, experience, and home environment before suggesting suitable matches. ${service.name}'s team will guide you through the process.` },
+      { q: `Is ${service.name} the nearest cat shelter to me in ${cityFormatted}?`, a: `Use the InfoDogCats Near Me directory to compare all cat shelters in ${cityFormatted} and find the one most convenient to your location.` },
+    ],
+  ],
+  breeder: [
+    [
+      { q: `Where is ${service.name} located?`, a: `${service.name} is based in ${service.address ?? cityFormatted + ', ' + stateFormatted}. Contact them directly to arrange a visit or get directions.` },
+      { q: `What breeds does ${service.name} in ${cityFormatted} offer?`, a: `Contact ${service.name} to find out which cat breeds they specialise in and whether they currently have kittens or upcoming litters available.` },
+      { q: `Are kittens from ${service.name} health-tested?`, a: `Ask ${service.name} about the health testing and genetic screening they carry out on their breeding cats. Responsible breeders will be transparent about this process.` },
+      { q: `How do I reserve a kitten from ${service.name}?`, a: `Contact ${service.name} in ${cityFormatted} to ask about their reservation process, deposit requirements, and how to secure a place for an upcoming litter.` },
+      { q: `Where can I find a cat breeder near me in ${cityFormatted}?`, a: `Browse the InfoDogCats Near Me directory to explore registered cat breeders in ${cityFormatted} and surrounding areas of ${stateFormatted}.` },
+    ],
+    [
+      { q: `Are kittens from ${service.name} registered?`, a: `Ask ${service.name} about registration with recognised Australian cat associations such as CCCA or ACF, and what documentation accompanies each kitten.` },
+      { q: `Can I visit ${service.name} to meet the kittens?`, a: `Most reputable breeders welcome prospective owners to visit. Contact ${service.name} in ${cityFormatted} to arrange a time to meet available kittens and their parents.` },
+      { q: `What age do kittens leave ${service.name}?`, a: `Responsible breeders typically release kittens at 12 weeks or older, once fully weaned and socialised. Confirm the specifics directly with ${service.name}.` },
+      { q: `Does ${service.name} offer support after purchasing a kitten?`, a: `Ethical breeders provide ongoing guidance. Ask ${service.name} about the after-sale support they offer new kitten owners in ${cityFormatted} and beyond.` },
+      { q: `How much do kittens from ${service.name} cost?`, a: `Prices vary by breed, pedigree, and inclusions. Contact ${service.name} directly for current pricing and a breakdown of what's included with each kitten.` },
+    ],
+    [
+      { q: `Are kittens from ${service.name} vaccinated before sale?`, a: `Most reputable breeders vaccinate kittens before they go to new homes. Confirm with ${service.name} what vaccinations and health treatments are included with each kitten.` },
+      { q: `Does ${service.name} breed show or pet quality cats?`, a: `Some breeders produce both show and pet quality kittens. Contact ${service.name} to discuss your intentions and which type of kitten suits your needs.` },
+      { q: `Does ${service.name} have a waiting list for kittens?`, a: `Popular breeders often have waiting lists. Contact ${service.name} early to find out current availability and how to secure a place for an upcoming litter.` },
+      { q: `How do I know if ${service.name} is a responsible breeder?`, a: `Ask about health testing, registration, socialisation practices, veterinary care, and whether you can visit. A responsible breeder like ${service.name} will answer these questions openly and transparently.` },
+      { q: `Are there other cat breeders near me in ${cityFormatted}?`, a: `Browse the InfoDogCats Near Me directory to compare registered cat breeders in ${cityFormatted} and the wider ${stateFormatted} area.` },
+    ],
+    [
+      { q: `How long has ${service.name} been breeding cats?`, a: `Ask ${service.name} about their experience and background. Established breeders with a proven track record in ${cityFormatted} are generally a more reliable choice.` },
+      { q: `Is ${service.name} a registered cat breeder in ${stateFormatted}?`, a: `Ask ${service.name} about their registration with recognised Australian cat bodies, which helps ensure they follow responsible breeding standards.` },
+      { q: `What should I ask when contacting ${service.name}?`, a: `Ask about health testing, socialisation, registration, what's included in the purchase price, and whether you can visit. ${service.name} should be happy to answer all of these questions.` },
+      { q: `Does ${service.name} breed indoor or outdoor cats?`, a: `Breeding environment and the lifestyle cats are raised for varies. Ask ${service.name} in ${cityFormatted} about how their cats are raised and what they recommend for your home situation.` },
+      { q: `How do I find the best cat breeder near me in ${cityFormatted}?`, a: `Look for registered breeders who health-test, welcome visits, and provide documentation. ${service.name} in ${cityFormatted} is a local option worth contacting to assess whether they meet your standards.` },
+    ],
+  ],
+  pet_shop: [
+    [
+      { q: `Where is ${service.name} located?`, a: `${service.name} is at ${service.address ?? cityFormatted + ', ' + stateFormatted}. Use the Google Maps link on this page to get directions.` },
+      { q: `What cat products does ${service.name} stock?`, a: `Contact ${service.name} to find out about their current range of cat food, accessories, toys, health products, and grooming supplies.` },
+      { q: `Does ${service.name} sell premium cat food in ${cityFormatted}?`, a: `Most local pet shops stock a range of cat food brands. Contact ${service.name} to check whether they carry your preferred brands or can order specific products.` },
+      { q: `What are the opening hours of ${service.name}?`, a: `Contact ${service.name}${service.phone ? ' on ' + service.phone : ''} or visit their website to confirm current trading hours.` },
+      { q: `Is there a pet shop near me in ${cityFormatted}?`, a: `${service.name} is a local pet shop in ${cityFormatted}. Browse our InfoDogCats Near Me directory to compare all pet shops in your area.` },
+    ],
+    [
+      { q: `Does ${service.name} stock prescription cat food?`, a: `Some pet shops carry veterinary diet products. Contact ${service.name} in ${cityFormatted} to check whether they stock prescription or therapeutic cat food options.` },
+      { q: `Can I get cat nutrition advice at ${service.name}?`, a: `Staff at ${service.name} can provide product recommendations based on your cat's age, health, and dietary needs. Visit them in ${cityFormatted} or contact them to discuss your requirements.` },
+      { q: `Does ${service.name} sell cat enrichment toys?`, a: `Enrichment toys are important for indoor cat wellbeing. Contact ${service.name} in ${cityFormatted} to ask about their current range of interactive and puzzle toys for cats.` },
+      { q: `Does ${service.name} offer a loyalty programme?`, a: `Contact ${service.name} directly to ask whether they offer loyalty rewards, bulk discounts, or regular promotions for repeat customers in ${cityFormatted}.` },
+      { q: `Can I order cat products online from ${service.name}?`, a: `Check ${service.name}'s website${service.website ? ' at ' + service.website : ''} or contact them directly to find out if they offer online shopping or click-and-collect for cat products.` },
+    ],
+    [
+      { q: `Does ${service.name} sell cat litter and accessories?`, a: `Most pet shops carry a range of litter products and accessories. Contact ${service.name} to check current stock and available options.` },
+      { q: `Does ${service.name} sell cat carriers and travel items?`, a: `Many pet shops stock cat carriers and travel accessories. Contact ${service.name} in ${cityFormatted} to check availability and get recommendations for your cat's travel needs.` },
+      { q: `Does ${service.name} stock cat health supplements?`, a: `Some pet shops carry supplements for joint health, coat condition, and digestion. Ask ${service.name} in ${cityFormatted} about the health products they currently stock.` },
+      { q: `Is there parking near ${service.name} in ${cityFormatted}?`, a: `Contact ${service.name} directly or check Google Maps for information about parking options near their ${cityFormatted} location.` },
+      { q: `Where can I find other pet shops near me in ${cityFormatted}?`, a: `Browse our InfoDogCats Near Me directory for a full list of pet shops in ${cityFormatted} and surrounding areas of ${stateFormatted}.` },
+    ],
+    [
+      { q: `Where is ${service.name} located?`, a: `${service.name} is in ${service.address ?? cityFormatted + ', ' + stateFormatted}. Get directions using the Google Maps link on this page.` },
+      { q: `Does ${service.name} offer grooming products for cats?`, a: `Contact ${service.name} to find out whether they stock professional or home grooming products suitable for cats, including brushes, combs, and cat-safe shampoos.` },
+      { q: `What cat food brands does ${service.name} carry?`, a: `Contact ${service.name} directly to find out which cat food brands they currently stock, including premium, grain-free, or veterinary diet options.` },
+      { q: `Does ${service.name} sell products for kittens?`, a: `Most pet shops stock kitten-specific products including food, litter, and starter accessories. Contact ${service.name} in ${cityFormatted} to find out about their range for young cats.` },
+      { q: `How do I find the best pet shop near me in ${cityFormatted}?`, a: `Look for a store with knowledgeable staff, a quality product range, and helpful customer service. ${service.name} in ${cityFormatted} is a local option worth visiting to see if it meets your needs.` },
+    ],
+  ],
+};
+
+const faqs = (faqSets[service.category] ?? faqSets['vet'])[v];
+
+const hasCoords = service.latitude && service.longitude;
+const mapsQuery = encodeURIComponent(`${service.name} ${service.address ?? ''} ${cityFormatted}`);
+const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${mapsQuery}`;
+const mapsDirectionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${mapsQuery}`;
+const embedUrl = hasCoords
+  ? `https://maps.google.com/maps?q=${service.latitude},${service.longitude}&z=15&output=embed`
+  : `https://maps.google.com/maps?q=${mapsQuery}&z=15&output=embed`;
+
+const breadcrumbs = [
+  { label: 'Home', href: '/' },
+  { label: 'Near Me', href: '/near-me' },
+  { label: cityFormatted, href: `/near-me/${service.city.toLowerCase()}` },
+  { label: cat.plural, href: `/near-me/${service.city.toLowerCase()}/${categorySlug}` },
+  { label: service.name, href: '#' },
+];
+
+const pageTitle = `${service.name} — ${cat.singular} in ${cityFormatted}, ${stateFormatted} | InfoDogCats`;
+const pageDescription = `Looking for a ${cat.nearme} in ${cityFormatted}? ${service.name} is a local ${cat.singular.toLowerCase()} in ${cityFormatted}, ${stateFormatted}. View contact details, location map, and more.`;
+const canonicalUrl = `https://www.infodogcats.com/near-me/${service.city.toLowerCase()}/${categorySlug}/${service.slug}`;
+
+const schema = {
+  "@context": "https://schema.org",
+  "@type": service.category === 'vet' ? "VeterinaryCare" : "LocalBusiness",
+  "name": service.name,
+  "address": {
+    "@type": "PostalAddress",
+    "streetAddress": service.address ?? '',
+    "addressLocality": cityFormatted,
+    "addressRegion": stateFormatted,
+    "postalCode": service.postcode ?? '',
+    "addressCountry": "AU"
+  },
+  ...(service.phone    ? { "telephone": service.phone } : {}),
+  ...(service.website  ? { "url": service.website }     : {}),
+  ...(service.rating   ? { "aggregateRating": { "@type": "AggregateRating", "ratingValue": service.rating, "bestRating": 5 } } : {}),
+  ...(hasCoords        ? { "geo": { "@type": "GeoCoordinates", "latitude": service.latitude, "longitude": service.longitude } } : {}),
+  "areaServed": cityFormatted,
+};
+
+const faqSchema = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": faqs.map(f => ({
+    "@type": "Question",
+    "name": f.q,
+    "acceptedAnswer": { "@type": "Answer", "text": f.a }
+  }))
+};
+---
+
+<Layout title={pageTitle}>
+  <SEOMeta title={pageTitle} description={pageDescription} canonical={canonicalUrl} />
+  <script type="application/ld+json" set:html={JSON.stringify(schema)} slot="head" />
+  <script type="application/ld+json" set:html={JSON.stringify(faqSchema)} slot="head" />
+
+  <main class="min-h-screen bg-[#FDFAF5]">
+
+    <!-- Breadcrumb -->
+    <nav class="bg-[#F8F4ED] border-b border-[#D4B896]/30 py-3" aria-label="Breadcrumb">
+      <div class="max-w-6xl mx-auto px-4">
+        <ol class="flex flex-wrap items-center gap-1 text-sm text-[#2C2C2C]/60">
+          {breadcrumbs.map((crumb, i) => (
+            <li class="flex items-center gap-1">
+              {i > 0 && <span class="text-[#D4B896]">›</span>}
+              {crumb.href === '#'
+                ? <span class="text-[#2C2C2C] font-medium truncate max-w-[200px]">{crumb.label}</span>
+                : <a href={crumb.href} class="hover:text-[#C85A3C] transition-colors">{crumb.label}</a>
+              }
+            </li>
+          ))}
+        </ol>
+      </div>
+    </nav>
+
+    <!-- Hero banner -->
+    <div class="bg-gradient-to-br from-[#C85A3C] to-[#a04830] text-white">
+      <div class="max-w-6xl mx-auto px-4 py-8 lg:py-10">
+        <div class="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <div class="flex items-center gap-2 mb-2">
+              <span class="bg-white/20 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-widest">
+                {cat.icon} {cat.nearme}
+              </span>
+            </div>
+            <h1 class="text-3xl lg:text-4xl font-bold leading-tight font-['Playfair_Display',serif] mb-1">
+              {service.name}
+            </h1>
+            <p class="text-white/80 text-sm">{cat.singular} · {cityFormatted}, {stateFormatted}</p>
+            {service.rating && (
+              <div class="flex items-center gap-2 mt-3">
+                <div class="flex">
+                  {Array.from({length: 5}).map((_, i) => (
+                    <svg class={`w-4 h-4 ${i < Math.round(service.rating) ? 'text-amber-300' : 'text-white/30'}`} fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                    </svg>
+                  ))}
+                </div>
+                <span class="text-sm font-semibold">{service.rating.toFixed(1)} / 5.0</span>
+              </div>
+            )}
+          </div>
+          <div class="flex flex-wrap gap-2 mt-1">
+            {service.phone && (
+              <a href={`tel:${service.phone}`}
+                 class="flex items-center gap-2 bg-white text-[#C85A3C] font-bold text-sm px-5 py-2.5 rounded-xl hover:bg-[#FFF8F5] transition-colors shadow">
+                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z"/>
+                </svg>
+                Call Now
+              </a>
+            )}
+            <a href={mapsDirectionsUrl} target="_blank" rel="noopener noreferrer"
+               class="flex items-center gap-2 bg-white/15 border border-white/30 text-white font-semibold text-sm px-5 py-2.5 rounded-xl hover:bg-white/25 transition-colors">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
+              </svg>
+              Directions
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Info strip -->
+    <div class="bg-white border-b border-[#D4B896]/30 shadow-sm">
+      <div class="max-w-6xl mx-auto px-4 py-4">
+        <div class="flex flex-wrap gap-x-8 gap-y-3 text-sm">
+          {service.address && (
+            <div class="flex items-center gap-2 text-[#2C2C2C]">
+              <svg class="w-4 h-4 text-[#C85A3C] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+              </svg>
+              <span>{service.address}, {cityFormatted} {service.postcode ?? ''}</span>
+            </div>
+          )}
+          {service.phone && (
+            <div class="flex items-center gap-2">
+              <svg class="w-4 h-4 text-[#C85A3C] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 8V5z"/>
+              </svg>
+              <a href={`tel:${service.phone}`} class="text-[#C85A3C] font-semibold hover:underline">{service.phone}</a>
+            </div>
+          )}
+          {service.website && (
+            <div class="flex items-center gap-2">
+              <svg class="w-4 h-4 text-[#C85A3C] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9"/>
+              </svg>
+              <a href={service.website} target="_blank" rel="noopener noreferrer" class="text-[#C85A3C] font-semibold hover:underline">Visit Website</a>
+            </div>
+          )}
+          {service.rating && (
+            <div class="flex items-center gap-1.5">
+              <svg class="w-4 h-4 text-amber-400" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+              </svg>
+              <span class="font-semibold text-[#2C2C2C]">{service.rating.toFixed(1)}</span>
+              <span class="text-[#2C2C2C]/50">/ 5.0</span>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+
+    <div class="max-w-6xl mx-auto px-4 py-8 lg:py-10">
+      <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+
+        <!-- Main content (3/4) -->
+        <div class="lg:col-span-3 space-y-10">
+
+          <!-- Map -->
+          <section>
+            <h2 class="text-lg font-bold text-[#2C2C2C] mb-3 font-['Playfair_Display',serif]">
+              Location — {service.name} in {cityFormatted}
+            </h2>
+            <div class="rounded-2xl overflow-hidden border border-[#D4B896]/40 shadow-sm">
+              <iframe
+                src={embedUrl}
+                width="100%"
+                height="320"
+                style="border:0;"
+                allowfullscreen=""
+                loading="lazy"
+                referrerpolicy="no-referrer-when-downgrade"
+                title={`Map showing location of ${service.name} in ${cityFormatted}`}
+              ></iframe>
+            </div>
+            <div class="flex gap-3 mt-3">
+              <a href={mapsDirectionsUrl} target="_blank" rel="noopener noreferrer"
+                 class="flex items-center gap-2 px-4 py-2 bg-[#2D5016] text-white text-sm font-semibold rounded-xl hover:bg-[#244010] transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
+                </svg>
+                Get Directions
+              </a>
+              <a href={mapsUrl} target="_blank" rel="noopener noreferrer"
+                 class="flex items-center gap-2 px-4 py-2 bg-white border border-[#D4B896]/60 text-[#2C2C2C] text-sm font-medium rounded-xl hover:bg-[#F8F4ED] transition-colors">
+                <svg class="w-4 h-4 text-[#C85A3C]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                </svg>
+                View on Google Maps
+              </a>
+            </div>
+          </section>
+
+          <!-- About -->
+          <section>
+            <h2 class="text-xl font-bold text-[#2C2C2C] mb-4 font-['Playfair_Display',serif]">
+              About {service.name}
+            </h2>
+            <div class="space-y-4">
+              {paragraphs.map(p => (
+                <p class="text-[#2C2C2C]/80 leading-relaxed">{p}</p>
+              ))}
+            </div>
+          </section>
+
+          <!-- FAQ -->
+          <section>
+            <h2 class="text-xl font-bold text-[#2C2C2C] mb-4 font-['Playfair_Display',serif]">
+              Frequently Asked Questions — {cat.nearme} in {cityFormatted}
+            </h2>
+            <div class="space-y-3">
+              {faqs.map((faq) => (
+                <details class="group bg-white border border-[#D4B896]/40 rounded-xl overflow-hidden">
+                  <summary class="flex items-center justify-between px-5 py-4 cursor-pointer list-none select-none hover:bg-[#F8F4ED] transition-colors">
+                    <span class="font-medium text-[#2C2C2C] pr-4 text-sm">{faq.q}</span>
+                    <svg class="w-5 h-5 text-[#C85A3C] flex-shrink-0 transition-transform group-open:rotate-45" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                    </svg>
+                  </summary>
+                  <div class="px-5 pb-4 pt-2 text-[#2C2C2C]/75 text-sm leading-relaxed border-t border-[#D4B896]/30">
+                    {faq.a}
+                  </div>
+                </details>
+              ))}
+            </div>
+          </section>
+
+          <!-- Nearby services -->
+          {nearby && nearby.length > 0 && (
+            <section>
+              <h2 class="text-xl font-bold text-[#2C2C2C] mb-4 font-['Playfair_Display',serif]">
+                Other {cat.plural} Near You in {cityFormatted}
+              </h2>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {nearby.map(n => (
+                  <a href={`/near-me/${service.city.toLowerCase()}/${categorySlug}/${n.slug}`}
+                     class="flex items-start gap-3 p-4 bg-white border border-[#D4B896]/40 rounded-xl hover:border-[#C85A3C]/50 hover:bg-[#FFF8F5] transition-all group">
+                    <span class="text-xl mt-0.5 flex-shrink-0">{cat.icon}</span>
+                    <div class="min-w-0">
+                      <p class="font-medium text-[#2C2C2C] group-hover:text-[#C85A3C] transition-colors truncate text-sm">{n.name}</p>
+                      {n.address && <p class="text-xs text-[#2C2C2C]/50 mt-0.5 truncate">{n.address}</p>}
+                      {n.rating && <p class="text-xs text-amber-500 mt-1">★ {n.rating.toFixed(1)}</p>}
+                    </div>
+                  </a>
+                ))}
+              </div>
+              <a href={`/near-me/${service.city.toLowerCase()}/${categorySlug}`}
+                 class="inline-flex items-center gap-1.5 mt-4 text-sm text-[#C85A3C] hover:underline font-semibold">
+                View all {cat.plural} in {cityFormatted}
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                </svg>
+              </a>
+            </section>
+          )}
+
+        </div>
+
+        <!-- Sidebar (1/4) -->
+        <aside class="space-y-6">
+
+          <!-- Contact card -->
+          <div class="bg-white border border-[#D4B896]/40 rounded-2xl overflow-hidden">
+            <div class="bg-[#C85A3C] px-4 py-3">
+              <h3 class="text-white font-semibold text-xs uppercase tracking-widest">Contact</h3>
+            </div>
+            <div class="p-4 space-y-3">
+              {service.address && (
+                <div class="flex items-start gap-2">
+                  <svg class="w-4 h-4 text-[#C85A3C] flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                  </svg>
+                  <div>
+                    <p class="text-xs text-[#2C2C2C] leading-snug">{service.address}</p>
+                    <p class="text-xs text-[#2C2C2C]/60">{cityFormatted}, {stateFormatted}{service.postcode ? ' ' + service.postcode : ''}</p>
+                  </div>
+                </div>
+              )}
+              {service.phone && (
+                <div class="flex items-center gap-2">
+                  <svg class="w-4 h-4 text-[#C85A3C] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 8V5z"/>
+                  </svg>
+                  <a href={`tel:${service.phone}`} class="text-xs font-semibold text-[#C85A3C] hover:underline">{service.phone}</a>
+                </div>
+              )}
+              {service.website && (
+                <div class="flex items-center gap-2">
+                  <svg class="w-4 h-4 text-[#C85A3C] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9"/>
+                  </svg>
+                  <a href={service.website} target="_blank" rel="noopener noreferrer" class="text-xs font-semibold text-[#C85A3C] hover:underline truncate">Visit Website</a>
+                </div>
+              )}
+              {service.rating && (
+                <div class="flex items-center gap-1.5">
+                  <svg class="w-4 h-4 text-amber-400" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                  </svg>
+                  <span class="text-xs font-semibold text-[#2C2C2C]">{service.rating.toFixed(1)} / 5.0</span>
+                </div>
+              )}
+              <div class="pt-1 space-y-2">
+                {service.phone && (
+                  <a href={`tel:${service.phone}`}
+                     class="flex items-center justify-center gap-2 w-full py-2.5 bg-[#C85A3C] hover:bg-[#b04e34] text-white font-semibold text-sm rounded-xl transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 8V5z"/>
+                    </svg>
+                    Call Now
+                  </a>
+                )}
+                <a href={mapsDirectionsUrl} target="_blank" rel="noopener noreferrer"
+                   class="flex items-center justify-center gap-2 w-full py-2.5 bg-[#2D5016] hover:bg-[#244010] text-white font-semibold text-sm rounded-xl transition-colors">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
+                  </svg>
+                  Get Directions
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <!-- Ad slot 1 -->
+          <div class="rounded-2xl overflow-hidden">
+            <ins class="adsbygoogle"
+                 style="display:block"
+                 data-ad-client="ca-pub-6105386470374334"
+                 data-ad-slot="9810754441"
+                 data-ad-format="auto"
+                 data-full-width-responsive="true"></ins>
+            <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+          </div>
+
+          <!-- Back link -->
+          <a href={`/near-me/${service.city.toLowerCase()}/${categorySlug}`}
+             class="flex items-center gap-2 text-sm text-[#C85A3C] hover:underline font-medium">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+            </svg>
+            All {cat.plural} in {cityFormatted}
+          </a>
+
+          <!-- Ad slot 2 -->
+          <div class="rounded-2xl overflow-hidden">
+            <ins class="adsbygoogle"
+                 style="display:block"
+                 data-ad-client="ca-pub-6105386470374334"
+                 data-ad-slot="4865549528"
+                 data-ad-format="auto"
+                 data-full-width-responsive="true"></ins>
+            <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+          </div>
+
+        </aside>
+      </div>
+    </div>
+  </main>
+</Layout>
