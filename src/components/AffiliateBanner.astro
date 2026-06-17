@@ -1,0 +1,109 @@
+---
+// AffiliateBanner.astro
+// بانر صغير مربع للإعلانات التابعة - يُستخدم في صفحات near-me الفردية
+// الروابط الأصلية (120x600 و 1x1 pixel) غير مناسبة كمربع، لذا تم تصميم بطاقة مخصصة
+// تستخدم رابط التتبع نفسه (CJ tracking link) بدون استخدام أسماء العلامة التجارية في النص المحيط
+
+interface Props {
+  variant?: 'flea-tick' | 'pet-supplies';
+}
+
+const { variant = 'flea-tick' } = Astro.props;
+
+const content = {
+  'flea-tick': {
+    icon: '🐾',
+    title: 'Flea & Tick Protection',
+    subtitle: 'Trusted treatment for cats',
+    cta: 'Shop Now',
+    href: 'https://www.anrdoezrs.net/click-101772922-11744805',
+  },
+  'pet-supplies': {
+    icon: '🐱',
+    title: 'Pet Supplies & Essentials',
+    subtitle: 'Quality care for your cat',
+    cta: 'Shop Now',
+    href: 'https://www.dpbolvw.net/click-101772922-15734653',
+  },
+};
+
+const data = content[variant];
+---
+
+<a
+  href={data.href}
+  target="_top"
+  rel="sponsored noopener noreferrer"
+  class="affiliate-banner"
+  aria-label={`${data.title} - sponsored link`}
+>
+  <span class="affiliate-banner__label">Sponsored</span>
+  <div class="affiliate-banner__icon">{data.icon}</div>
+  <div class="affiliate-banner__title">{data.title}</div>
+  <div class="affiliate-banner__subtitle">{data.subtitle}</div>
+  <div class="affiliate-banner__cta">{data.cta}</div>
+</a>
+
+<style>
+  .affiliate-banner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 200px;
+    height: 200px;
+    margin: 1.5rem auto;
+    padding: 1.25rem;
+    background: #FDFAF5;
+    border: 1px solid #D4B896;
+    border-radius: 12px;
+    text-decoration: none;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  }
+
+  .affiliate-banner:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  }
+
+  .affiliate-banner__label {
+    font-size: 0.65rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: #D4B896;
+    margin-bottom: 0.5rem;
+  }
+
+  .affiliate-banner__icon {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .affiliate-banner__title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1rem;
+    color: #2C2C2C;
+    text-align: center;
+    margin-bottom: 0.25rem;
+  }
+
+  .affiliate-banner__subtitle {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.75rem;
+    color: #2C2C2C;
+    opacity: 0.7;
+    text-align: center;
+    margin-bottom: 0.75rem;
+  }
+
+  .affiliate-banner__cta {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #fff;
+    background: #C85A3C;
+    padding: 0.4rem 1rem;
+    border-radius: 6px;
+  }
+</style>

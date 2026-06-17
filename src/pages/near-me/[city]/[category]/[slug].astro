@@ -2,6 +2,7 @@
 import { createSupabaseServerClient } from '../../../../lib/supabase';
 import Layout from '../../../../components/Layout.astro';
 import SEOMeta from '../../../../components/SEOMeta.astro';
+import AffiliateBanner from '../../../../components/AffiliateBanner.astro';
 
 export const prerender = false;
 
@@ -726,6 +727,9 @@ const faqSchema = {
                  data-full-width-responsive="true"></ins>
             <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
           </div>
+
+          <!-- Affiliate Banner -->
+          <AffiliateBanner variant="flea-tick" />
 
         </aside>
       </div>
