@@ -1,5 +1,6 @@
 ---
 export const prerender = false;
+import { Image } from 'astro:assets';
 import Layout from '../../components/Layout.astro';
 import { supabase, getImageUrl } from '../../lib/supabase';
 import { buildCatSchema } from '../../lib/seo';
@@ -108,11 +109,12 @@ const priceLabel = isFree ? 'FREE' : `A$${cat.price.toLocaleString()}`;
       <div>
         <div class="relative rounded-2xl overflow-hidden bg-warm-white shadow-md" style="aspect-ratio: 4/3;">
           {primaryImg ? (
-            <img
-              src={getImgUrl(primaryImg.storage_path, 900)}
+            <Image
+              src={getImgUrl(primaryImg.storage_path)}
               alt={`${cat.breed} for sale in ${cat.city}, ${cat.state}`}
               class="w-full h-full object-cover"
-              width="900" height="675"
+              width={900} height={675}
+              quality={75}
               onerror="this.onerror=null; this.src='/placeholder-cat.svg';"
             />
           ) : (
@@ -134,11 +136,12 @@ const priceLabel = isFree ? 'FREE' : `A$${cat.price.toLocaleString()}`;
         {images.length > 1 && (
           <div class="flex gap-2 mt-3 overflow-x-auto pb-1">
             {images.map((img: any) => (
-              <img
-                src={getImgUrl(img.storage_path, 200)}
+              <Image
+                src={getImgUrl(img.storage_path)}
                 alt={cat.breed}
                 class="w-20 h-16 object-cover rounded-xl flex-shrink-0 cursor-pointer hover:opacity-80 border-2 border-transparent hover:border-terracotta transition-all"
-                width="80" height="64"
+                width={80} height={64}
+                quality={60}
                 onerror="this.onerror=null; this.src='/placeholder-cat.svg';"
               />
             ))}
