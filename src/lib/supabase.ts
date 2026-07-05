@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { createServerClient, parseCookieHeader, serializeCookieHeader } from '@supabase/ssr';
+import { getR2PublicUrl } from './r2';
 
 const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
@@ -33,8 +34,7 @@ export function createSupabaseServerClient(request: Request, responseHeaders: He
 
 export function getImageUrl(path: string, width = 800): string {
   if (!path) return '/placeholder-cat.jpg';
-  if (path.startsWith('http')) return path;
-  return `${supabaseUrl}/storage/v1/object/public/cat-images/${path}`;
+  return getR2PublicUrl(path);
 }
 
 export function getThumbnailUrl(path: string): string {

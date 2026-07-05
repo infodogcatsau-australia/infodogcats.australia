@@ -3,6 +3,7 @@ export const prerender = false;
 import { Image } from 'astro:assets';
 import Layout from '../../components/Layout.astro';
 import { supabase, getImageUrl } from '../../lib/supabase';
+import { getR2PublicUrl } from '../../lib/r2';
 import { buildCatSchema } from '../../lib/seo';
 
 const { slug } = Astro.params;
@@ -30,34 +31,10 @@ if (cat.status === 'active' && !isBot && !alreadyViewed) {
   Astro.cookies.set(viewCookieName, '1', { maxAge: 1800, path: '/', sameSite: 'lax' });
 }
 
-const SUPABASE_URL = import.meta.env.PUBLIC_SUPABASE_URL;
-
-// ✅ يدعم كل أنواع المسارات
-function getImgUrl(path: string, width = 900): string {
-  if (!path) return '/placeholder-cat.svg';
-  // URL كامل
-  if (path.startsWith('http')) return path;
-  // مسارات تبدأ بـ UUID (إعلانات المستخدمين) → cat-images bucket
-  // مثال: 78748d60-98e0.../0-1234567890.jpg
-  if (/^[0-9a-f]{8}-[0-9a-f]{4}/.test(path)) {
-    return `${SUPABASE_URL}/storage/v1/object/public/cat-images/${path}`;
-  }
-  // demo/ و blog/ و manual/ و cats/ → cat-images bucket
-  if (path.startsWith('demo/') || path.startsWith('blog/') || path.startsWith('manual/') || path.startsWith('cats/')) {
-    return `${SUPABASE_URL}/storage/v1/object/public/cat-images/${path}`;
-  }
-  // wp-images → cat-images bucket
-  if (path.startsWith('wp-images/')) {
-    return `${SUPABASE_URL}/storage/v1/object/public/cat-images/${path}`;
-  }
-  // باقي المسارات
-  return `${SUPABASE_URL}/storage/v1/object/public/cat-images/${path}`;
-}
-
 const images = (cat.cat_images || []).sort((a: any, b: any) => a.sort_order - b.sort_order);
 const primaryImg = images.find((i: any) => i.is_primary) || images[0];
 const pageUrl = `https://www.infodogcats.com/cats-for-sale/${slug}`;
-const ogImage = primaryImg ? getImgUrl(primaryImg.storage_path, 1200) : undefined;
+const ogImage = primaryImg ? getR2PublicUrl(primaryImg.storage_path) : undefined;
 
 const isSold = cat.status === 'sold';
 const isAdopted = cat.title?.toLowerCase().includes('adopt') || cat.description?.toLowerCase().includes('adopted');
@@ -110,7 +87,7 @@ const priceLabel = isFree ? 'FREE' : `A$${cat.price.toLocaleString()}`;
         <div class="relative rounded-2xl overflow-hidden bg-warm-white shadow-md" style="aspect-ratio: 4/3;">
           {primaryImg ? (
             <Image
-              src={getImgUrl(primaryImg.storage_path)}
+              src={getR2PublicUrl(primaryImg.storage_path)}
               alt={`${cat.breed} for sale in ${cat.city}, ${cat.state}`}
               class="w-full h-full object-cover"
               width={900} height={675}
@@ -137,7 +114,7 @@ const priceLabel = isFree ? 'FREE' : `A$${cat.price.toLocaleString()}`;
           <div class="flex gap-2 mt-3 overflow-x-auto pb-1">
             {images.map((img: any) => (
               <Image
-                src={getImgUrl(img.storage_path)}
+                src={getR2PublicUrl(img.storage_path)}
                 alt={cat.breed}
                 class="w-20 h-16 object-cover rounded-xl flex-shrink-0 cursor-pointer hover:opacity-80 border-2 border-transparent hover:border-terracotta transition-all"
                 width={80} height={64}

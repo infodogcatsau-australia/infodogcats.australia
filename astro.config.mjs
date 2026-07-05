@@ -8,7 +8,10 @@ export default defineConfig({
   adapter: vercel({ webAnalytics: { enabled: true } }),
   integrations: [sitemap()],
   image: {
-    remotePatterns: [{ protocol: 'https', hostname: '**.supabase.co' }],
+    remotePatterns: [
+      { protocol: 'https', hostname: '**.supabase.co' },
+      { protocol: 'https', hostname: 'images.infodogcats.com' },
+    ],
   },
   vite: {
     plugins: [tailwindcss()],

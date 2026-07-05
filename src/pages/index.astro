@@ -3,8 +3,7 @@ export const prerender = false;
 import Layout from '../components/Layout.astro';
 import CatCard from '../components/CatCard.astro';
 import { supabase } from '../lib/supabase';
-
-const SUPABASE_URL = import.meta.env.PUBLIC_SUPABASE_URL;
+import { getR2PublicUrl } from '../lib/r2';
 
 Astro.response.headers.set('Cache-Control', 'public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800');
 
@@ -24,14 +23,14 @@ const { data: posts } = await supabase
   .limit(3);
 
 const breeds = [
-  { name: 'Maine Coon', href: '/cats-for-sale?breed=maine-coon', desc: 'Gentle giants', img: `${SUPABASE_URL}/storage/v1/object/public/cat-images/demo/01-maine-coon.jpg` },
-  { name: 'Ragdoll', href: '/cats-for-sale?breed=ragdoll', desc: 'Calm & affectionate', img: `${SUPABASE_URL}/storage/v1/object/public/cat-images/demo/02-ragdoll.jpg` },
-  { name: 'British Shorthair', href: '/cats-for-sale?breed=british-shorthair', desc: 'Independent', img: `${SUPABASE_URL}/storage/v1/object/public/cat-images/demo/03-british-shorthair.jpg` },
-  { name: 'Siamese', href: '/cats-for-sale?breed=siamese', desc: 'Vocal & social', img: `${SUPABASE_URL}/storage/v1/object/public/cat-images/demo/04-siamese.jpg` },
-  { name: 'Burmese', href: '/cats-for-sale?breed=burmese', desc: "Australia's favourite", img: `${SUPABASE_URL}/storage/v1/object/public/cat-images/demo/05-burmese.jpg` },
-  { name: 'Persian', href: '/cats-for-sale?breed=persian', desc: 'Elegant & calm', img: `${SUPABASE_URL}/storage/v1/object/public/cat-images/demo/06-persian.jpg` },
-  { name: 'Devon Rex', href: '/cats-for-sale?breed=devon-rex', desc: 'Playful & curly', img: `${SUPABASE_URL}/storage/v1/object/public/cat-images/demo/07-devon-rex.jpg` },
-  { name: 'Abyssinian', href: '/cats-for-sale?breed=abyssinian', desc: 'Active & curious', img: `${SUPABASE_URL}/storage/v1/object/public/cat-images/demo/08-abyssinian.jpg` },
+  { name: 'Maine Coon', href: '/cats-for-sale?breed=maine-coon', desc: 'Gentle giants', img: getR2PublicUrl('demo/01-maine-coon.jpg') },
+  { name: 'Ragdoll', href: '/cats-for-sale?breed=ragdoll', desc: 'Calm & affectionate', img: getR2PublicUrl('demo/02-ragdoll.jpg') },
+  { name: 'British Shorthair', href: '/cats-for-sale?breed=british-shorthair', desc: 'Independent', img: getR2PublicUrl('demo/03-british-shorthair.jpg') },
+  { name: 'Siamese', href: '/cats-for-sale?breed=siamese', desc: 'Vocal & social', img: getR2PublicUrl('demo/04-siamese.jpg') },
+  { name: 'Burmese', href: '/cats-for-sale?breed=burmese', desc: "Australia's favourite", img: getR2PublicUrl('demo/05-burmese.jpg') },
+  { name: 'Persian', href: '/cats-for-sale?breed=persian', desc: 'Elegant & calm', img: getR2PublicUrl('demo/06-persian.jpg') },
+  { name: 'Devon Rex', href: '/cats-for-sale?breed=devon-rex', desc: 'Playful & curly', img: getR2PublicUrl('demo/07-devon-rex.jpg') },
+  { name: 'Abyssinian', href: '/cats-for-sale?breed=abyssinian', desc: 'Active & curious', img: getR2PublicUrl('demo/08-abyssinian.jpg') },
 ];
 
 const cities = [
@@ -126,7 +125,7 @@ const schema = {
           </div>
           <div class="rounded-2xl overflow-hidden shadow-md aspect-square bg-warm-white">
             <img
-              src={`${SUPABASE_URL}/storage/v1/object/public/cat-images/demo/05-burmese.jpg`}
+              src={getR2PublicUrl('demo/05-burmese.jpg')}
               alt="Burmese kitten for sale Australia"
               class="w-full h-full object-cover hover:scale-105 transition-transform duration-700"
               width="350" height="350"
@@ -134,7 +133,7 @@ const schema = {
           </div>
           <div class="rounded-2xl overflow-hidden shadow-md aspect-square relative bg-warm-white">
             <img
-              src={`${SUPABASE_URL}/storage/v1/object/public/cat-images/demo/08-abyssinian.jpg`}
+              src={getR2PublicUrl('demo/08-abyssinian.jpg')}
               alt="Kitten for sale near me Australia"
               class="w-full h-full object-cover hover:scale-105 transition-transform duration-700"
               width="350" height="350"
@@ -293,7 +292,7 @@ const schema = {
               <div class="overflow-hidden bg-warm-white" style="aspect-ratio: 4/3;">
                 {post.featured_image_path ? (
                   <img
-                    src={post.featured_image_path.startsWith('http') ? post.featured_image_path : `${SUPABASE_URL}/storage/v1/object/public/cat-images/${post.featured_image_path}`}
+                    src={getR2PublicUrl(post.featured_image_path)}
                     alt={post.title}
                     class="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-500"
                     loading="lazy" width="400" height="300" />

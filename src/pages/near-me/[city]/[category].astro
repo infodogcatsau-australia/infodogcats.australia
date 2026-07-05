@@ -2,6 +2,7 @@
 export const prerender = false;
 import Layout from '../../../components/Layout.astro';
 import { supabase } from '../../../lib/supabase';
+import { getR2PublicUrl } from '../../../lib/r2';
 
 const { city, category } = Astro.params;
 const cityName = city ? city.charAt(0).toUpperCase() + city.slice(1).replace(/-/g, ' ') : 'Sydney';
@@ -35,7 +36,6 @@ const dbCategoryMap: Record<string, string> = {
 
 const catInfo = categoryMap[category || ''] || categoryMap['cat-vet'];
 const dbCategory = dbCategoryMap[category || ''] || 'vet';
-const SUPABASE_URL = import.meta.env.PUBLIC_SUPABASE_URL;
 
 const [{ data: services }, { data: cats }] = await Promise.all([
   supabase.from('local_services').select('*').ilike('city', `%${cityName}%`).eq('category', dbCategory).eq('is_active', true).order('rating', { ascending: false }).limit(50),
@@ -86,10 +86,7 @@ const faqSchema = {
 function getCatImgUrl(cat: any): string {
   const img = cat.cat_images?.find((i: any) => i.is_primary) || cat.cat_images?.[0];
   if (!img?.storage_path) return '/placeholder-cat.svg';
-  const p = img.storage_path;
-  if (p.startsWith('http')) return p;
-  if (p.startsWith('cats/')) return `${SUPABASE_URL}/storage/v1/object/public/${p}`;
-  return `${SUPABASE_URL}/storage/v1/object/public/cat-images/${p}`;
+  return getR2PublicUrl(img.storage_path);
 }
 ---
 

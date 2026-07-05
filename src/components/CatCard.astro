@@ -1,5 +1,6 @@
 ---
 import { Image } from 'astro:assets';
+import { getR2PublicUrl } from '../lib/r2';
 
 interface Props {
   cat: {
@@ -17,21 +18,7 @@ interface Props {
 const { cat } = Astro.props;
 const primaryImage = cat.cat_images?.find(i => i.is_primary) || cat.cat_images?.[0];
 
-const SUPABASE_URL = import.meta.env.PUBLIC_SUPABASE_URL;
-
-function getImgUrl(path: string): string {
-  if (!path) return '/placeholder-cat.svg';
-  // URL كامل — استخدمه مباشرة
-  if (path.startsWith('http')) return path;
-  // bucket cats
-  if (path.startsWith('cats/')) {
-    return `${SUPABASE_URL}/storage/v1/object/public/${path}`;
-  }
-  // bucket cat-images (الافتراضي)
-  return `${SUPABASE_URL}/storage/v1/object/public/cat-images/${path}`;
-}
-
-const imgUrl = primaryImage ? getImgUrl(primaryImage.storage_path) : null;
+const imgUrl = primaryImage ? getR2PublicUrl(primaryImage.storage_path) : null;
 const isSold = cat.status === 'sold';
 const isFree = cat.price === 0;
 ---

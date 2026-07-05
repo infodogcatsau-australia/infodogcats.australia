@@ -2,6 +2,7 @@
 export const prerender = false;
 import Layout from '../../../components/Layout.astro';
 import { supabase } from '../../../lib/supabase';
+import { getR2PublicUrl } from '../../../lib/r2';
 
 const { tag } = Astro.params;
 
@@ -40,8 +41,6 @@ const tagDescriptions: Record<string, string> = {
 const tagLabel = tagLabels[tag || ''] || (tag || '').replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 const tagDesc = tagDescriptions[tag || ''] || `Browse all ${tagLabel} articles on InfoDogCats — expert cat care advice for Australian cat owners.`;
 
-const SUPABASE_URL = import.meta.env.PUBLIC_SUPABASE_URL;
-
 const { data: posts } = await supabase
   .from('posts')
   .select('id, slug, title, excerpt, featured_image_path, published_at, author, tags')
@@ -56,9 +55,7 @@ if (!posts || posts.length === 0) {
 Astro.response.headers.set('Cache-Control', 'public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800');
 
 function blogImgUrl(path: string): string {
-  if (!path) return '';
-  if (path.startsWith('http')) return path;
-  return `${SUPABASE_URL}/storage/v1/object/public/cat-images/${path}`;
+  return getR2PublicUrl(path);
 }
 
 const tagColors: Record<string, string> = {
