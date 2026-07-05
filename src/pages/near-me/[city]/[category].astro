@@ -42,6 +42,8 @@ const [{ data: services }, { data: cats }] = await Promise.all([
   supabase.from('cats').select('id, slug, title, breed, price, city, state, cat_images(storage_path, is_primary)').eq('status', 'active').eq('is_approved', true).ilike('city', `%${cityName}%`).limit(4),
 ]);
 
+Astro.response.headers.set('Cache-Control', 'public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800');
+
 const auCities = ['Sydney','Melbourne','Brisbane','Perth','Adelaide','Gold Coast','Canberra','Hobart','Darwin'];
 const categories = ['cat-vet','cat-groomer','cat-shelter','pet-shop'];
 const pageTitle = `${catInfo.plural} Near Me in ${cityName} | InfoDogCats`;

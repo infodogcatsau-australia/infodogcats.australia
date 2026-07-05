@@ -13,6 +13,8 @@ const [{ data: services }, { data: cats }] = await Promise.all([
   supabase.from('cats').select('id, slug, title, breed, price, city, state, cat_images(storage_path, is_primary)').eq('status', 'active').eq('is_approved', true).ilike('city', `%${cityName}%`).order('created_at', { ascending: false }).limit(6),
 ]);
 
+Astro.response.headers.set('Cache-Control', 'public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800');
+
 const vets     = (services || []).filter((s: any) => s.category === 'vet');
 const groomers = (services || []).filter((s: any) => s.category === 'groomer');
 const shelters = (services || []).filter((s: any) => s.category === 'shelter');

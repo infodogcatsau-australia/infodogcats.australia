@@ -5,6 +5,8 @@ import { supabase } from '../../lib/supabase';
 
 const SUPABASE_URL = import.meta.env.PUBLIC_SUPABASE_URL;
 
+Astro.response.headers.set('Cache-Control', 'public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800');
+
 const { data: posts } = await supabase
   .from('posts')
   .select('id, slug, title, excerpt, tags, featured_image_path, published_at, author')

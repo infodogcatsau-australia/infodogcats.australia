@@ -21,6 +21,8 @@ if (error || !service) {
   return Astro.redirect('/404');
 }
 
+Astro.response.headers.set('Cache-Control', 'public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800');
+
 const { data: nearby } = await supabase
   .from('local_services')
   .select('id, name, slug, address, rating, phone')

@@ -6,6 +6,8 @@ import { supabase } from '../lib/supabase';
 
 const SUPABASE_URL = import.meta.env.PUBLIC_SUPABASE_URL;
 
+Astro.response.headers.set('Cache-Control', 'public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800');
+
 const { data: cats } = await supabase
   .from('cats')
   .select('id, slug, title, breed, price, city, state, cat_images(storage_path, is_primary)')

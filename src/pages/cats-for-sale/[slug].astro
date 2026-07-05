@@ -16,8 +16,17 @@ const { data: cat } = await supabase
 
 if (!cat) return Astro.redirect('/cats-for-sale', 302);
 
-if (cat.status === 'active') {
+Astro.response.headers.set('Cache-Control', 'public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800');
+
+const userAgent = Astro.request.headers.get('user-agent') || '';
+const isBot = /bot|crawl|spider|slurp|facebookexternalhit|whatsapp|telegrambot|preview|headless|lighthouse|pingdom|uptimerobot|semrushbot|ahrefsbot|mj12bot|dotbot|petalbot|bytespider|gptbot|ccbot|claudebot|python-requests|curl\/|wget\//i.test(userAgent);
+
+const viewCookieName = `viewed_${cat.id}`;
+const alreadyViewed = Astro.cookies.has(viewCookieName);
+
+if (cat.status === 'active' && !isBot && !alreadyViewed) {
   await supabase.rpc('increment_cat_views', { cat_slug: slug });
+  Astro.cookies.set(viewCookieName, '1', { maxAge: 1800, path: '/', sameSite: 'lax' });
 }
 
 const SUPABASE_URL = import.meta.env.PUBLIC_SUPABASE_URL;

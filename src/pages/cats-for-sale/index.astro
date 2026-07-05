@@ -10,6 +10,8 @@ const state = url.searchParams.get('state') || '';
 const city = url.searchParams.get('city') || '';
 const q = url.searchParams.get('q') || '';
 
+Astro.response.headers.set('Cache-Control', 'public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800');
+
 let query = supabase
   .from('cats')
   .select('id, slug, title, breed, price, city, state, status, adopted, cat_images(storage_path, is_primary)')

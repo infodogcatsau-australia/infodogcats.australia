@@ -53,6 +53,8 @@ if (!posts || posts.length === 0) {
   return Astro.redirect('/blog', 302);
 }
 
+Astro.response.headers.set('Cache-Control', 'public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800');
+
 function blogImgUrl(path: string): string {
   if (!path) return '';
   if (path.startsWith('http')) return path;
