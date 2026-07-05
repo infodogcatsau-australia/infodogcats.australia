@@ -2,10 +2,20 @@
 export const prerender = false;
 import Layout from '../../components/Layout.astro';
 import { createClient } from '@supabase/supabase-js';
+import { uploadToR2, R2_PUBLIC_URL } from '../../lib/r2';
 
 const SUPABASE_URL = import.meta.env.PUBLIC_SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE = import.meta.env.SUPABASE_SERVICE_ROLE;
 const { id } = Astro.params;
+
+const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const EXTENSION_BY_TYPE: Record<string, string> = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
+};
+const MAX_SIZE = 2 * 1024 * 1024;
+const MAX_FILES = 5;
 
 // Handle POST — update ad
 if (Astro.request.method === 'POST') {
@@ -53,6 +63,119 @@ if (Astro.request.method === 'POST') {
       });
     } catch (e) {
       return new Response(JSON.stringify({ error: 'Server error' }), {
+        status: 500, headers: { 'Content-Type': 'application/json' }
+      });
+    }
+  }
+
+  // Add/replace photos — verifies ownership, removes any deleted photos,
+  // uploads new ones to R2, and records them on the listing.
+  if (contentType.includes('multipart/form-data')) {
+    try {
+      const formData = await Astro.request.formData();
+      const accessToken = formData.get('access_token') as string;
+      const removeIds = JSON.parse((formData.get('remove_ids') as string) || '[]') as string[];
+      const files = formData.getAll('images') as File[];
+
+      if (!accessToken) {
+        return new Response(JSON.stringify({ error: 'Missing access_token.' }), {
+          status: 400, headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
+      for (const file of files) {
+        if (!ALLOWED_TYPES.includes(file.type)) {
+          return new Response(JSON.stringify({ error: `Invalid file type. Only JPG, PNG, WebP allowed.` }), {
+            status: 400, headers: { 'Content-Type': 'application/json' }
+          });
+        }
+        if (file.size > MAX_SIZE) {
+          return new Response(JSON.stringify({ error: `File too large. Max 2MB per image.` }), {
+            status: 400, headers: { 'Content-Type': 'application/json' }
+          });
+        }
+      }
+
+      const userSb = createClient(SUPABASE_URL, import.meta.env.PUBLIC_SUPABASE_ANON_KEY, {
+        global: { headers: { Authorization: `Bearer ${accessToken}` } }
+      });
+      const { data: { user }, error: userErr } = await userSb.auth.getUser();
+      if (userErr || !user) {
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+          status: 401, headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
+      const adminSb = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE);
+      const { data: cat } = await adminSb.from('cats').select('user_id').eq('id', id).single();
+      if (!cat || cat.user_id !== user.id) {
+        return new Response(JSON.stringify({ error: 'Forbidden' }), {
+          status: 403, headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
+      const { data: currentImages } = await adminSb
+        .from('cat_images')
+        .select('id, is_primary, sort_order')
+        .eq('cat_id', id)
+        .order('sort_order', { ascending: true });
+
+      const remaining = (currentImages || []).filter((img: any) => !removeIds.includes(img.id));
+      if (remaining.length + files.length > MAX_FILES) {
+        return new Response(JSON.stringify({ error: `Too many photos. Max ${MAX_FILES} per listing.` }), {
+          status: 400, headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
+      if (removeIds.length > 0) {
+        const { error: deleteErr } = await adminSb
+          .from('cat_images')
+          .delete()
+          .eq('cat_id', id)
+          .in('id', removeIds);
+        if (deleteErr) {
+          return new Response(JSON.stringify({ error: `Failed to remove photos: ${deleteErr.message}` }), {
+            status: 500, headers: { 'Content-Type': 'application/json' }
+          });
+        }
+      }
+
+      const needsPrimary = !remaining.some((img: any) => img.is_primary);
+      let nextSortOrder = remaining.length;
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const ext = EXTENSION_BY_TYPE[file.type] || 'jpg';
+        const storagePath = `${id}/${nextSortOrder}-${Date.now()}.${ext}`;
+
+        try {
+          const buffer = Buffer.from(await file.arrayBuffer());
+          await uploadToR2(storagePath, buffer, file.type);
+        } catch (uploadErr) {
+          return new Response(JSON.stringify({ error: `Failed to upload image ${i + 1} (${file.name}). Please try again.` }), {
+            status: 500, headers: { 'Content-Type': 'application/json' }
+          });
+        }
+
+        const { error: insertErr } = await adminSb.from('cat_images').insert({
+          cat_id: id,
+          storage_path: storagePath,
+          is_primary: needsPrimary && i === 0,
+          sort_order: nextSortOrder,
+        });
+        if (insertErr) {
+          return new Response(JSON.stringify({ error: `Image ${i + 1} uploaded but failed to save: ${insertErr.message}` }), {
+            status: 500, headers: { 'Content-Type': 'application/json' }
+          });
+        }
+        nextSortOrder++;
+      }
+
+      return new Response(JSON.stringify({ success: true }), {
+        status: 200, headers: { 'Content-Type': 'application/json' }
+      });
+    } catch (e) {
+      return new Response(JSON.stringify({ error: 'Photo upload error' }), {
         status: 500, headers: { 'Content-Type': 'application/json' }
       });
     }
@@ -127,6 +250,19 @@ if (Astro.request.method === 'POST') {
           class="w-full border border-sand rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta/50 resize-none"></textarea>
       </div>
 
+      <div>
+        <label class="block text-sm font-semibold text-charcoal mb-1.5">Photos (up to 5)</label>
+        <div id="current-photos" class="flex gap-2 flex-wrap mb-2"></div>
+        <div id="drop-zone" class="border-2 border-dashed border-sand rounded-xl p-6 text-center cursor-pointer hover:border-terracotta transition-colors">
+          <input type="file" name="images" accept="image/jpeg,image/png,image/webp" multiple id="image-input" class="hidden" />
+          <p class="text-4xl mb-2">📸</p>
+          <p class="text-sm text-gray-500">Click or drag photos here to add more</p>
+          <p class="text-xs text-gray-400 mt-1">JPG, PNG or WebP · Max 2MB each · Up to 5 photos total</p>
+        </div>
+        <div id="preview" class="flex gap-2 mt-2 flex-wrap"></div>
+        <div id="file-error" class="hidden text-xs text-red-500 mt-1"></div>
+      </div>
+
       <div class="grid grid-cols-2 gap-4">
         <div>
           <label class="block text-sm font-semibold text-charcoal mb-1.5">Phone</label>
@@ -160,6 +296,7 @@ if (Astro.request.method === 'POST') {
         </button>
       </div>
     </form>
+    <div id="r2-public-url" data-value={R2_PUBLIC_URL} class="hidden"></div>
   </div>
 </Layout>
 
@@ -173,6 +310,19 @@ if (Astro.request.method === 'POST') {
 
   const catId = window.location.pathname.split('/').pop();
 
+  const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+  const MAX_SIZE = 2 * 1024 * 1024;
+  const MAX_FILES = 5;
+
+  // R2_PUBLIC_URL isn't a PUBLIC_-prefixed env var, so it isn't available in
+  // client bundles — the server passes it down via a data attribute instead.
+  const R2_PUBLIC_URL = (document.getElementById('r2-public-url') as HTMLElement)?.dataset.value || '';
+  function getImgUrl(path: string): string {
+    if (!path) return '/placeholder-cat.svg';
+    if (path.startsWith('http')) return path;
+    return `${R2_PUBLIC_URL}/${path}`;
+  }
+
   async function init() {
     const { data: { session } } = await sb.auth.getSession();
     if (!session) {
@@ -183,7 +333,7 @@ if (Astro.request.method === 'POST') {
     // جلب بيانات الإعلان
     const { data: cat, error } = await sb
       .from('cats')
-      .select('*')
+      .select('*, cat_images(id, storage_path, is_primary, sort_order)')
       .eq('id', catId)
       .eq('user_id', session.user.id)
       .single();
@@ -208,6 +358,81 @@ if (Astro.request.method === 'POST') {
     (form.querySelector('[name="description"]') as HTMLTextAreaElement).value = cat.description || '';
     (form.querySelector('[name="contact_phone"]') as HTMLInputElement).value = cat.contact_phone || '';
     (form.querySelector('[name="contact_email"]') as HTMLInputElement).value = cat.contact_email || '';
+
+    // الصور الحالية — قابلة للحذف
+    const existingImages = ((cat.cat_images || []) as any[]).sort((a, b) => a.sort_order - b.sort_order);
+    const removedIds = new Set<string>();
+    const currentPhotosEl = document.getElementById('current-photos')!;
+    const dropZone = document.getElementById('drop-zone')!;
+    const imageInput = document.getElementById('image-input') as HTMLInputElement;
+    const preview = document.getElementById('preview')!;
+    const fileError = document.getElementById('file-error')!;
+
+    function maxNewFileSlots(): number {
+      const keptCount = existingImages.filter(img => !removedIds.has(img.id)).length;
+      return MAX_FILES - keptCount;
+    }
+
+    function renderCurrentPhotos() {
+      currentPhotosEl.innerHTML = '';
+      for (const img of existingImages) {
+        const isRemoved = removedIds.has(img.id);
+        const wrap = document.createElement('div');
+        wrap.className = 'relative w-20 h-16 flex-shrink-0';
+        wrap.innerHTML = `
+          <img src="${getImgUrl(img.storage_path)}" class="w-20 h-16 object-cover rounded-lg border border-sand ${isRemoved ? 'opacity-30' : ''}" onerror="this.onerror=null; this.src='/placeholder-cat.svg';" />
+          <button type="button" class="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full text-xs font-bold flex items-center justify-center shadow ${isRemoved ? 'bg-gray-400 text-white' : 'bg-red-500 text-white'}">
+            ${isRemoved ? '↺' : '×'}
+          </button>
+        `;
+        const toggleBtn = wrap.querySelector('button')!;
+        toggleBtn.addEventListener('click', () => {
+          if (removedIds.has(img.id)) removedIds.delete(img.id);
+          else removedIds.add(img.id);
+          renderCurrentPhotos();
+        });
+        currentPhotosEl.appendChild(wrap);
+      }
+    }
+    renderCurrentPhotos();
+
+    dropZone.addEventListener('click', () => imageInput.click());
+
+    imageInput.addEventListener('change', () => {
+      fileError.classList.add('hidden');
+      preview.innerHTML = '';
+      if (!imageInput.files) return;
+      const slots = maxNewFileSlots();
+      for (const file of Array.from(imageInput.files)) {
+        if (!ALLOWED_TYPES.includes(file.type)) {
+          fileError.textContent = 'Invalid file type. Only JPG, PNG, WebP allowed.';
+          fileError.classList.remove('hidden');
+          imageInput.value = '';
+          preview.innerHTML = '';
+          return;
+        }
+        if (file.size > MAX_SIZE) {
+          fileError.textContent = 'File too large. Max 2MB per image.';
+          fileError.classList.remove('hidden');
+          imageInput.value = '';
+          preview.innerHTML = '';
+          return;
+        }
+      }
+      if (imageInput.files.length > slots) {
+        fileError.textContent = `Too many photos selected. Max ${MAX_FILES} per listing.`;
+        fileError.classList.remove('hidden');
+        imageInput.value = '';
+        preview.innerHTML = '';
+        return;
+      }
+      for (const file of Array.from(imageInput.files)) {
+        const img = document.createElement('img');
+        img.src = URL.createObjectURL(file);
+        img.className = 'w-20 h-16 object-cover rounded-lg border border-sand';
+        preview.appendChild(img);
+      }
+    });
 
     // حفظ التعديلات
     form.addEventListener('submit', async (e) => {
@@ -249,6 +474,28 @@ if (Astro.request.method === 'POST') {
           btn.disabled = false;
           btn.textContent = 'Save Changes';
           return;
+        }
+
+        const newFiles = imageInput.files;
+        if ((newFiles && newFiles.length > 0) || removedIds.size > 0) {
+          const photoFormData = new FormData();
+          photoFormData.append('access_token', session.access_token);
+          photoFormData.append('remove_ids', JSON.stringify(Array.from(removedIds)));
+          if (newFiles) Array.from(newFiles).forEach(f => photoFormData.append('images', f));
+
+          const photoRes = await fetch(`/edit-ad/${catId}`, {
+            method: 'POST',
+            body: photoFormData
+          });
+
+          if (!photoRes.ok) {
+            const photoResult = await photoRes.json().catch(() => ({}));
+            errorEl.textContent = photoResult.error || 'Listing saved, but photo changes failed.';
+            errorEl.classList.remove('hidden');
+            btn.disabled = false;
+            btn.textContent = 'Save Changes';
+            return;
+          }
         }
 
         successEl.classList.remove('hidden');
