@@ -1,0 +1,37 @@
+---
+export const prerender = false;
+import Layout from '../components/Layout.astro';
+
+Astro.response.status = 404;
+Astro.response.statusText = 'Not Found';
+---
+
+<Layout
+  title="Page Not Found"
+  description="The page you're looking for doesn't exist or may have moved."
+  noindex={true}
+>
+  <div class="max-w-2xl mx-auto px-4 sm:px-6 py-24 text-center">
+    <div class="text-6xl mb-6">🐈‍⬛</div>
+    <h1 class="font-display text-3xl md:text-4xl font-bold text-gray-950 mb-3">
+      Page Not Found
+    </h1>
+    <p class="text-gray-500 text-base mb-10">
+      That page doesn't exist, or it's moved. Try one of these instead:
+    </p>
+    <div class="flex flex-col sm:flex-row items-center justify-center gap-3">
+      <a href="/"
+         class="w-full sm:w-auto bg-terracotta text-white px-6 py-2.5 rounded-xl font-semibold text-sm hover:bg-terracotta-light transition-colors">
+        Go to Homepage
+      </a>
+      <a href="/cats-for-sale"
+         class="w-full sm:w-auto bg-white border border-sand/50 text-gray-700 px-6 py-2.5 rounded-xl font-semibold text-sm hover:border-terracotta hover:text-terracotta transition-colors">
+        Browse Cats for Sale
+      </a>
+      <a href="/blog"
+         class="w-full sm:w-auto bg-white border border-sand/50 text-gray-700 px-6 py-2.5 rounded-xl font-semibold text-sm hover:border-terracotta hover:text-terracotta transition-colors">
+        Read the Blog
+      </a>
+    </div>
+  </div>
+</Layout>

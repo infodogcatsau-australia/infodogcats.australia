@@ -51,11 +51,13 @@ export const GET: APIRoute = async () => {
     }))
   );
 
-  // Blog posts
+  // Blog posts (noindex = false excludes pruned off-topic/geo content and posts
+  // pending a content-quality rewrite — see content-audit.md)
   const { data: posts } = await supabase
     .from('posts')
     .select('slug, updated_at, published_at')
     .eq('is_published', true)
+    .eq('noindex', false)
     .order('published_at', { ascending: false });
 
   const postPages = (posts || []).map((post: any) => ({

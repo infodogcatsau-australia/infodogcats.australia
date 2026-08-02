@@ -45,11 +45,13 @@ const { data: posts } = await supabase
   .from('posts')
   .select('id, slug, title, excerpt, featured_image_path, published_at, author, tags')
   .eq('is_published', true)
+  .eq('noindex', false)
   .contains('tags', [tag!])
   .order('published_at', { ascending: false });
 
+// Unknown/empty tag — a real 404, not a redirect to /blog.
 if (!posts || posts.length === 0) {
-  return Astro.redirect('/blog', 302);
+  return Astro.rewrite('/404');
 }
 
 Astro.response.headers.set('Cache-Control', 'public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800');

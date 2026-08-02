@@ -2,8 +2,20 @@
 export const prerender = false;
 import Layout from '../components/Layout.astro';
 import { supabase, getImageUrl } from '../lib/supabase';
+import { PRUNED_POST_SLUGS } from '../lib/pruned-posts';
+import { LEGACY_REDIRECTS } from '../lib/legacy-redirects';
 
 const { slug } = Astro.params;
+
+// Off-topic content pruned in the Phase 2 cleanup — permanent redirect, never rendered.
+if (slug && PRUNED_POST_SLUGS.has(slug)) {
+  return Astro.redirect('/blog', 301);
+}
+
+// Known WordPress-era URL with an explicit replacement — permanent redirect.
+if (slug && LEGACY_REDIRECTS[slug]) {
+  return Astro.redirect(LEGACY_REDIRECTS[slug], 301);
+}
 
 const { data: post } = await supabase
   .from('posts')
@@ -12,7 +24,8 @@ const { data: post } = await supabase
   .eq('is_published', true)
   .single();
 
-if (!post) return Astro.redirect('/blog', 302);
+// No known post and no known legacy mapping — a real 404, not a redirect to /blog.
+if (!post) return Astro.rewrite('/404');
 
 Astro.response.headers.set('Cache-Control', 'public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800');
 
@@ -99,6 +112,7 @@ const pageUrl = `https://www.infodogcats.com/${slug}`;
   type="article"
   schema={schema}
   canonical={pageUrl}
+  noindex={post.noindex}
 >
   <!-- Article Header -->
   <div class="bg-warm-white border-b border-sand/30">

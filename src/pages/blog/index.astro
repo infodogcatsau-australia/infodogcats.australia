@@ -10,6 +10,7 @@ const { data: posts } = await supabase
   .from('posts')
   .select('id, slug, title, excerpt, tags, featured_image_path, published_at, author')
   .eq('is_published', true)
+  .eq('noindex', false)
   .order('published_at', { ascending: false })
   .range(0, 299);
 
