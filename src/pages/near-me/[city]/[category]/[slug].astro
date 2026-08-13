@@ -450,6 +450,13 @@ const faqSchema = {
               {service.name}
             </h1>
             <p class="text-white/80 text-sm">{cat.singular} · {cityFormatted}, {stateFormatted}</p>
+            <a href={`/near-me/${service.city.toLowerCase()}/${categorySlug}`}
+               class="inline-flex items-center gap-1.5 mt-2 text-sm text-white/80 hover:text-white hover:underline font-medium">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+              </svg>
+              All {cat.plural} in {cityFormatted}
+            </a>
             {service.rating && (
               <div class="flex items-center gap-2 mt-3">
                 <div class="flex">
@@ -634,7 +641,7 @@ const faqSchema = {
         </div>
 
         <!-- Sidebar (1/4) -->
-        <aside class="space-y-6">
+        <aside class="space-y-12">
 
           <!-- Contact card -->
           <div class="bg-white border border-[#D4B896]/40 rounded-2xl overflow-hidden">
@@ -700,34 +707,31 @@ const faqSchema = {
           </div>
 
           <!-- Ad slot 1 -->
-          <div class="rounded-2xl overflow-hidden">
-            <ins class="adsbygoogle"
-                 style="display:block"
-                 data-ad-client="ca-pub-6105386470374334"
-                 data-ad-slot="9810754441"
-                 data-ad-format="auto"
-                 data-full-width-responsive="true"></ins>
-            <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+          <div>
+            <p class="text-xs text-gray-400 mb-2 text-center">Advertisement</p>
+            <div class="rounded-2xl overflow-hidden" style="min-height: 280px;">
+              <ins class="adsbygoogle"
+                   style="display:block; min-height: 280px;"
+                   data-ad-client="ca-pub-6105386470374334"
+                   data-ad-slot="9810754441"
+                   data-ad-format="auto"
+                   data-full-width-responsive="true"></ins>
+              <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+            </div>
           </div>
 
-          <!-- Back link -->
-          <a href={`/near-me/${service.city.toLowerCase()}/${categorySlug}`}
-             class="flex items-center gap-2 text-sm text-[#C85A3C] hover:underline font-medium">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
-            </svg>
-            All {cat.plural} in {cityFormatted}
-          </a>
-
           <!-- Ad slot 2 -->
-          <div class="rounded-2xl overflow-hidden">
-            <ins class="adsbygoogle"
-                 style="display:block"
-                 data-ad-client="ca-pub-6105386470374334"
-                 data-ad-slot="4865549528"
-                 data-ad-format="auto"
-                 data-full-width-responsive="true"></ins>
-            <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+          <div>
+            <p class="text-xs text-gray-400 mb-2 text-center">Advertisement</p>
+            <div class="rounded-2xl overflow-hidden" style="min-height: 280px;">
+              <ins class="adsbygoogle"
+                   style="display:block; min-height: 280px;"
+                   data-ad-client="ca-pub-6105386470374334"
+                   data-ad-slot="4865549528"
+                   data-ad-format="auto"
+                   data-full-width-responsive="true"></ins>
+              <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+            </div>
           </div>
 
           <!-- Affiliate Banner -->

@@ -73,6 +73,20 @@ function getPostImgUrl(path: string): string {
   return getImageUrl(path, 900);
 }
 
+// Split the article HTML after the first paragraph so the top ad can be inserted a little
+// further into the content, instead of sitting flush against the sticky header on short
+// posts/small screens. Falls back to keeping the whole body in `tail` (ad renders before
+// all content, as before) if no paragraph boundary is found.
+function splitAfterFirstParagraph(html: string): { head: string; tail: string } {
+  if (!html) return { head: '', tail: '' };
+  const match = html.match(/<\/p\s*>/i);
+  if (!match || match.index === undefined) return { head: '', tail: html };
+  const splitIndex = match.index + match[0].length;
+  return { head: html.slice(0, splitIndex), tail: html.slice(splitIndex) };
+}
+
+const { head: contentHead, tail: contentTail } = splitAfterFirstParagraph(post.content);
+
 const pageUrl = `https://www.infodogcats.com/${slug}`;
 ---
 
@@ -178,10 +192,31 @@ const pageUrl = `https://www.infodogcats.com/${slug}`;
       </div>
     )}
 
+    {contentHead && (
+      <div class="
+        prose prose-base max-w-none
+        prose-headings:font-display
+        prose-headings:text-gray-950
+        prose-headings:font-bold
+        prose-h2:text-2xl prose-h2:mt-10 prose-h2:mb-4
+        prose-h3:text-xl prose-h3:mt-8 prose-h3:mb-3
+        prose-p:text-gray-600 prose-p:leading-relaxed prose-p:mb-4
+        prose-a:text-terracotta prose-a:font-medium prose-a:no-underline hover:prose-a:underline
+        prose-strong:text-gray-800 prose-strong:font-semibold
+        prose-ul:text-gray-600 prose-ol:text-gray-600
+        prose-li:mb-1.5
+        prose-img:rounded-2xl prose-img:shadow-md prose-img:mx-auto
+        prose-blockquote:border-terracotta prose-blockquote:bg-warm-white prose-blockquote:rounded-r-xl prose-blockquote:py-2
+        prose-code:text-terracotta prose-code:bg-warm-white prose-code:px-1.5 prose-code:rounded
+        prose-hr:border-sand/50
+      " set:html={contentHead} />
+    )}
+
     <!-- AdSense — Top of article -->
-    <div class="my-6 text-center">
+    <div class="my-6 text-center" style="min-height: 280px;">
+      <p class="text-xs text-gray-400 mb-2">Advertisement</p>
       <ins class="adsbygoogle"
-           style="display:block; text-align:center;"
+           style="display:block; text-align:center; min-height: 280px;"
            data-ad-layout="in-article"
            data-ad-format="fluid"
            data-ad-client="ca-pub-6105386470374334"
@@ -206,12 +241,13 @@ const pageUrl = `https://www.infodogcats.com/${slug}`;
       prose-blockquote:border-terracotta prose-blockquote:bg-warm-white prose-blockquote:rounded-r-xl prose-blockquote:py-2
       prose-code:text-terracotta prose-code:bg-warm-white prose-code:px-1.5 prose-code:rounded
       prose-hr:border-sand/50
-    " set:html={post.content} />
+    " set:html={contentTail} />
 
     <!-- AdSense — Bottom of article -->
-    <div class="my-8">
+    <div class="my-8" style="min-height: 280px;">
+      <p class="text-xs text-gray-400 mb-2">Advertisement</p>
       <ins class="adsbygoogle"
-           style="display:block"
+           style="display:block; min-height: 280px;"
            data-ad-format="fluid"
            data-ad-layout-key="-6t+ed+2i-1n-4w"
            data-ad-client="ca-pub-6105386470374334"
